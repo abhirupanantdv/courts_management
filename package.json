@@ -1,9 +1,0 @@
-{
-  "name": "courts_management",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "npm --prefix frontend run build && npm --prefix frontend run package:frappe",
-    "package:frappe": "npm --prefix frontend run package:frappe"
-  }
-}
