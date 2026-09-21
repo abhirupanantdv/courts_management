@@ -398,3 +398,26 @@ Implemented a robust, unified 3-tier responsive CSS design system in `frontend/s
   `Minified React error #300: Rendered fewer hooks than expected. This may be caused by an accidental early return statement.`
 - **Root Cause Identified:** In `frontend/src/components/commandCentre/CommandCentre.jsx`, `const [selectedStore, setSelectedStore] = useState(...)` and `handleSelectStore` were positioned *below* the conditional early return statements (`if (activePage === 'sales') return ...`). When switching routes, the component returned early, skipping `useState(selectedStore)`. React detected a mismatch in the hook call count and threw invariant error #300.
 - **Solution Applied:** Moved `useState(selectedStore)` and `handleSelectStore` to the top level of `CommandCentre.jsx` before any conditional return statements. All React hooks now execute unconditionally on every render cycle, ensuring stable navigation across all routes and shortcuts.
+
+---
+
+### 8. Working Capital & Operating Horizons Redesign (`FinancePage.jsx`)
+
+- **Issue Reported:** The Working Capital & Operating Horizons section on the Finance page was unstyled, rendering as plain stacked text with browser dotted underlines, zero progress bars, and an inaccurate negative operating surplus caused by comparing Today's sales against All-Time purchases.
+- **Root Cause:**
+  1. CSS classes `.finance-horizons-card`, `.horizon-metrics-row`, `.horizon-metric`, `.horizon-label`, `.horizon-bar-wrap`, and `.horizon-bar` were missing in `components.css`.
+  2. The revenue metric was falling back to `data?.heroMetrics?.salesToday` (PGK 55.00) rather than genuine total billed revenue (`data?.kpis?.totalSales?.value`).
+  3. `MoneyAmount` applied dotted underlines (`text-decoration: underline dotted`) by default.
+- **Solution Applied:**
+  1. **Executive Card Styling:** Created `.finance-horizons-card` with clean white surface, 16px radius, subtle elevation shadow, and a gradient header.
+  2. **Interactive Metric Tiles:** Implemented 3 dedicated metric cards (`Gross Revenue Billed`, `Payables & Procurement Commitments`, and `Operating Surplus Realization`) featuring:
+     - Distinctive icon badges (`TrendingUp` in emerald, `CreditCard` in amber, `Scale` in cyan/red).
+     - Clean uppercase category titles with percentage contribution pills (`100% Baseline`, `% of Rev`, `Margin Ratio`).
+     - Distinctive headline typography (1.65rem bold) with dotted underlines removed.
+     - Smooth 8px animated horizontal progress bars (`.horizon-bar.is-green`, `.horizon-bar.is-amber`, `.horizon-bar.is-teal / is-red`).
+     - Clear explanatory captions for each liquidity metric.
+  3. **Accurate Financial Precedence:** Updated `totalSales` to prioritize `data?.kpis?.totalSales?.value` so procurement spend is evaluated against genuine total billed revenue.
+  4. **Multi-Device Responsive Architecture:**
+     - **Laptop & Desktop (`>= 1025px`):** 3 balanced horizontal columns.
+     - **Tablet (`641px - 1024px`):** 3 columns with adapted padding and 1.35rem typography.
+     - **Mobile (`<= 640px`):** Single-column stack with 100% full-width cards and touch-optimized padding.

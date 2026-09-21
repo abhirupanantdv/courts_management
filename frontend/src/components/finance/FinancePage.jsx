@@ -22,7 +22,7 @@ export function FinancePage({ data, onNavigate }) {
   const [period, setPeriod] = useState('All');
   const [visibleCount, setVisibleCount] = useState(20);
 
-  const totalSales = Number(data?.heroMetrics?.salesToday || data?.kpis?.totalSales?.value || 0);
+  const totalSales = Number(data?.kpis?.totalSales?.value ?? data?.heroMetrics?.salesToday ?? 0);
   const totalPurchases = Number(data?.kpis?.totalPurchase?.value || 0);
   const inventoryValue = Number(data?.kpis?.inventoryValue?.value || 0);
   const netMargin = totalSales - totalPurchases;
@@ -138,38 +138,100 @@ export function FinancePage({ data, onNavigate }) {
         </div>
       </div>
 
-      {/* Cash Flow Horizons Banner */}
+      {/* Working Capital & Operating Horizons Banner */}
       <div className="finance-horizons-card">
         <div className="card-header">
           <div>
             <h3>Working Capital & Operating Horizons</h3>
-            <span className="header-subtitle">Liquidity allocation based on active ledgers</span>
+            <span className="header-subtitle">Liquidity allocation based on active ERPNext ledgers</span>
           </div>
+          <span className={`horizon-status-pill ${netMargin >= 0 ? 'is-positive' : 'is-negative'}`}>
+            {netMargin >= 0 ? <TrendingUp size={14} /> : <ArrowDownRight size={14} />}
+            <span>{netMargin >= 0 ? `Operating Surplus: +${marginPercent}%` : `Procurement Deficit: ${marginPercent}%`}</span>
+          </span>
         </div>
 
         <div className="horizon-metrics-row">
+          {/* 1. Gross Revenue Billed */}
           <div className="horizon-metric">
-            <span className="horizon-label">Gross Revenue Billed</span>
+            <div className="horizon-metric-top">
+              <div className="horizon-metric-title-wrap">
+                <span className="horizon-metric-icon is-green">
+                  <TrendingUp size={18} />
+                </span>
+                <span className="horizon-label">Gross Revenue Billed</span>
+              </div>
+              <span className="horizon-badge is-green">100% Baseline</span>
+            </div>
+
+            <div className="horizon-value-wrap">
+              <strong><MoneyAmount value={totalSales} /></strong>
+            </div>
+
             <div className="horizon-bar-wrap">
               <div className="horizon-bar is-green" style={{ width: '100%' }} />
             </div>
-            <strong><MoneyAmount value={totalSales} /></strong>
+            <p className="horizon-desc">Total recognized revenue from verified billed customer invoices</p>
           </div>
 
+          {/* 2. Payables & Procurement Commitments */}
           <div className="horizon-metric">
-            <span className="horizon-label">Payables & Procurement Commitments</span>
-            <div className="horizon-bar-wrap">
-              <div className="horizon-bar is-amber" style={{ width: totalSales > 0 ? `${Math.min(100, Math.round((totalPurchases / totalSales) * 100))}%` : '0%' }} />
+            <div className="horizon-metric-top">
+              <div className="horizon-metric-title-wrap">
+                <span className="horizon-metric-icon is-amber">
+                  <CreditCard size={18} />
+                </span>
+                <span className="horizon-label">Payables & Commitments</span>
+              </div>
+              <span className="horizon-badge is-amber">
+                {totalSales > 0 ? `${Math.round((totalPurchases / totalSales) * 100)}% of Rev` : 'Procurement'}
+              </span>
             </div>
-            <strong><MoneyAmount value={totalPurchases} /></strong>
+
+            <div className="horizon-value-wrap">
+              <strong><MoneyAmount value={totalPurchases} /></strong>
+            </div>
+
+            <div className="horizon-bar-wrap">
+              <div 
+                className="horizon-bar is-amber" 
+                style={{ width: totalSales > 0 ? `${Math.min(100, Math.round((totalPurchases / totalSales) * 100))}%` : '0%' }} 
+              />
+            </div>
+            <p className="horizon-desc">Billed supplier obligations and inventory procurement spend</p>
           </div>
 
+          {/* 3. Operating Surplus Realization */}
           <div className="horizon-metric">
-            <span className="horizon-label">Operating Surplus Realization</span>
-            <div className="horizon-bar-wrap">
-              <div className="horizon-bar is-teal" style={{ width: totalSales > 0 ? `${Math.min(100, Math.round((Math.max(0, netMargin) / totalSales) * 100))}%` : '0%' }} />
+            <div className="horizon-metric-top">
+              <div className="horizon-metric-title-wrap">
+                <span className={`horizon-metric-icon ${netMargin >= 0 ? 'is-teal' : 'is-red'}`}>
+                  <Scale size={18} />
+                </span>
+                <span className="horizon-label">Operating Surplus</span>
+              </div>
+              <span className={`horizon-badge ${netMargin >= 0 ? 'is-teal' : 'is-red'}`}>
+                {netMargin >= 0 ? `+${marginPercent}% Margin` : `${marginPercent}% Deficit`}
+              </span>
             </div>
-            <strong><MoneyAmount value={netMargin} /></strong>
+
+            <div className="horizon-value-wrap">
+              <strong className={netMargin < 0 ? 'is-negative' : ''}>
+                <MoneyAmount value={netMargin} />
+              </strong>
+            </div>
+
+            <div className="horizon-bar-wrap">
+              <div 
+                className={`horizon-bar ${netMargin >= 0 ? 'is-teal' : 'is-red'}`} 
+                style={{ width: totalSales > 0 ? `${Math.min(100, Math.max(4, Math.round((Math.abs(netMargin) / totalSales) * 100)))}%` : '0%' }} 
+              />
+            </div>
+            <p className="horizon-desc">
+              {netMargin >= 0 
+                ? 'Net commercial operational surplus retained after vendor expenses' 
+                : 'Net operational cash deficit requiring working capital replenishment'}
+            </p>
           </div>
         </div>
       </div>

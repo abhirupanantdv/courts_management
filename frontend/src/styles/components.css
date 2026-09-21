@@ -2569,6 +2569,227 @@ td {
   align-items: start;
 }
 
+/* Working Capital & Operating Horizons Banner */
+.finance-horizons-card {
+  border: 1px solid #dcebf8;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(18, 77, 145, 0.06);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+
+.finance-horizons-card .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid #edf4fb;
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+}
+
+.finance-horizons-card .card-header h3 {
+  margin: 0 0 3px;
+  color: #071f46;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.finance-horizons-card .header-subtitle {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.horizon-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.horizon-status-pill.is-positive {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.horizon-status-pill.is-negative {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.horizon-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: 22px 24px;
+}
+
+.horizon-metric {
+  background: #f8fbfe;
+  border: 1px solid #e3edf7;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.horizon-metric:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(18, 77, 145, 0.08);
+}
+
+.horizon-metric-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.horizon-metric-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.horizon-metric-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.horizon-metric-icon.is-green {
+  background: #e6f8f0;
+  color: #059669;
+}
+
+.horizon-metric-icon.is-amber {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.horizon-metric-icon.is-teal {
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.horizon-metric-icon.is-red {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.horizon-label {
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #475569;
+}
+
+.horizon-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.horizon-badge.is-green {
+  background: #e6f8f0;
+  color: #047857;
+}
+
+.horizon-badge.is-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.horizon-badge.is-teal {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.horizon-badge.is-red {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.horizon-value-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.horizon-value-wrap strong {
+  font-size: 1.65rem;
+  font-weight: 850;
+  color: #071f46;
+  line-height: 1.15;
+}
+
+.horizon-value-wrap strong .money-amount {
+  text-decoration: none !important;
+}
+
+.horizon-value-wrap strong.is-negative,
+.horizon-value-wrap strong.is-negative .money-amount {
+  color: #dc2626 !important;
+}
+
+.horizon-bar-wrap {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 2px 0;
+}
+
+.horizon-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.horizon-bar.is-green {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.horizon-bar.is-amber {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.horizon-bar.is-teal {
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+}
+
+.horizon-bar.is-red {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.horizon-desc {
+  font-size: 0.74rem;
+  color: #64748b;
+  line-height: 1.35;
+  margin: 0;
+}
+
 .module-table-card {
   border: 1px solid #dcebf8;
   border-radius: 12px;
@@ -5700,6 +5921,25 @@ td {
   .erp-modal-card {
     width: min(90vw, 560px);
   }
+
+  /* Finance Horizons */
+  .finance-horizons-card .card-header {
+    padding: 16px 20px;
+  }
+
+  .horizon-metrics-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .horizon-metric {
+    padding: 14px 16px;
+  }
+
+  .horizon-value-wrap strong {
+    font-size: 1.35rem;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -6400,6 +6640,28 @@ td {
   .report-kpi {
     padding: 6px 8px;
     border-radius: 6px;
+  }
+
+  /* Finance Horizons */
+  .finance-horizons-card .card-header {
+    padding: 14px 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .horizon-metrics-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px 12px;
+  }
+
+  .horizon-metric {
+    padding: 14px 14px;
+  }
+
+  .horizon-value-wrap strong {
+    font-size: 1.45rem;
   }
 
   /* Universal Touch Tables */
