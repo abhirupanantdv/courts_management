@@ -306,3 +306,34 @@ All artificial multipliers and fallback constants have been permanently removed 
 - Resolves the text squash issue (`TodayPGK 1.59M`), placing the period label on the left, an animated progress track in the center, and the formatted PGK currency on the right.
 - Enhanced `.chart-frame--mini` with responsive padding and tooltips.
 
+---
+
+### 5. Category Revenue Card & Store Drilldown Redesign
+
+#### A. Replacement of Warehouse Item Distribution Donut:
+- Replaced the repetitive `DashboardDonut` (Warehouse Item Distribution) with `CategoryPerformanceCard.jsx`.
+- Queries genuine product group revenue directly from `tabSales Invoice Item`:
+  - **Home Appliances:** PGK 156.6K (31% share)
+  - **TV & Entertainment:** PGK 112.0K (22% share)
+  - **Tools & Equipments:** PGK 101.1K (20% share)
+  - **Furniture:** PGK 49.6K (10% share)
+  - **Bedding:** PGK 45.6K (9% share)
+  - **Kitchen Items:** PGK 35.3K (7% share)
+- Eliminates redundant warehouse dropdowns in the top grid and provides clean executive retail intelligence.
+
+#### B. Redesigned Store Drilldown:
+- **No Redundant Warehouse Sidebar:** Replaced the cramped multi-column layout with a top selector strip (`.drilldown-selector-strip`) that clearly highlights the active warehouse.
+- **Authentic Item Names:** Fixed undefined item names by properly mapping `sku.name || sku.item || sku.item_name`.
+- **Live On-Hand Stock:** Fixed the "unit 0" issue by querying real on-hand stock from `tabBin` (`sku.onHandStock`). Items now accurately display e.g. `23 units in stock`, `306 units in stock`, `5,495 units in stock` alongside units sold.
+
+#### C. Quick Actions Auto-Execution & Route Mapping:
+- In `QuickActions.jsx`, mapped all 6 direct operations shortcuts:
+  1. **Sales Register:** Navigates to Sales Register report with immediate automatic table execution.
+  2. **Purchase Register:** Navigates to Purchase Register report with immediate automatic table execution.
+  3. **Stock Balance:** Navigates to Stock Balance report with immediate automatic table execution.
+  4. **Finance & GL:** Navigates directly to the Financial Ledger module with CSV export.
+  5. **Store Matrix:** Navigates to Store Performance Matrix report with immediate automatic table execution.
+  6. **Stock Movement:** Navigates to Sales vs Stock Movement Run-Rate.
+- In `ReportsPage.jsx`, fixed `initialReportId` to set `isExecuted: true`, eliminating the blank unexecuted screen.
+
+
