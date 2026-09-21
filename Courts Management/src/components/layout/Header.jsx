@@ -107,7 +107,7 @@ export function Header({
           </button>
           <div className="login-menu">
             <button className="user-chip" onClick={() => setIsLoginOpen((value) => !value)}>
-              <span>{isAuthenticated ? auth.user.slice(0, 2).toUpperCase() : 'AG'}</span>
+              <span>{isAuthenticated ? auth.user.slice(0, 2).toUpperCase() : 'CM'}</span>
               <p>
                 <strong>{isAuthenticated ? auth.user : 'System Account'}</strong>
                 {isAuthenticated ? 'Connected' : 'Login'}
@@ -220,7 +220,7 @@ function LoginDropdown({
               autoComplete="username"
               value={username}
               onChange={(event) => onUsernameChange(event.target.value)}
-              placeholder="administrator@example.com"
+              placeholder="user@company.com"
               required
             />
           </label>

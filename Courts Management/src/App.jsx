@@ -96,7 +96,7 @@ export default function App() {
     const snapshot = getCourtsLiveErpSnapshotDashboard();
     setAuth({
       status: 'authenticated',
-      user: 'Administrator',
+      user: 'Preview User',
       error: '',
       isOfflineSnapshot: true,
     });

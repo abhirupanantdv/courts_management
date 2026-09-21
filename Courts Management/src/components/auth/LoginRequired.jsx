@@ -84,7 +84,7 @@ export function LoginRequired({ auth, onLogin, onEnterPreview }) {
                 id="erp-username"
                 type="text"
                 autoComplete="username"
-                placeholder="e.g. administrator@example.com"
+                placeholder="e.g. user@company.com"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
