@@ -84,6 +84,16 @@ export function CommandCentre({
     return <ReportsPage data={data} onNavigate={onNavigate} initialReportId={activeReportId} />;
   }
 
+  const [selectedStore, setSelectedStore] = useState(data.storePerformance?.[0]?.store || '');
+
+  const handleSelectStore = (storeName) => {
+    setSelectedStore(storeName);
+    const el = document.getElementById('store-drilldown-panel');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+
   return (
     <main className="dashboard-main">
       <Hero data={data} onNavigate={onNavigate} />
@@ -112,8 +122,18 @@ export function CommandCentre({
       </section>
 
       <section className="dashboard-grid dashboard-grid--bottom">
-        <StorePerformance stores={data.storePerformance} onNavigate={onNavigate} />
-        <StoreDetails data={data} onNavigate={onNavigate} />
+        <StorePerformance 
+          stores={data.storePerformance} 
+          selectedStore={selectedStore}
+          onSelectStore={handleSelectStore}
+          onNavigate={onNavigate} 
+        />
+        <StoreDetails 
+          data={data} 
+          selectedStore={selectedStore}
+          onSelectStore={setSelectedStore}
+          onNavigate={onNavigate} 
+        />
         <WarehouseAnalysis data={data} onNavigate={onNavigate} />
       </section>
       <AppFooter />

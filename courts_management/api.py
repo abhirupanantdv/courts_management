@@ -83,6 +83,70 @@ def get_dashboard_data():
         ORDER BY total_value DESC
     """, as_dict=True)
 
+    # Identify the latest active posting date in Sales Invoice for resilient time horizons
+    latest_inv_row = frappe.db.sql("""
+        SELECT MAX(posting_date) as max_date
+        FROM `tabSales Invoice`
+        WHERE docstatus = 1
+    """, as_dict=True)
+    latest_inv_date = str(latest_inv_row[0].max_date) if (latest_inv_row and latest_inv_row[0].max_date) else today
+    latest_yr = getdate(latest_inv_date).year
+    latest_mo = getdate(latest_inv_date).month
+
+    # Aggregate genuine store sales per warehouse from Sales Invoice Item + Sales Invoice
+    wh_sales_summary_raw = frappe.db.sql("""
+        SELECT 
+            COALESCE(sii.warehouse, 'POM Warehouse - CTS') as warehouse,
+            COUNT(DISTINCT si.name) as invoice_count,
+            COALESCE(SUM(sii.qty), 0) as units_sold,
+            COALESCE(SUM(sii.amount), 0) as total_sales,
+            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s THEN sii.amount ELSE 0 END), 0) as ytd_sales,
+            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s AND MONTH(si.posting_date) = %s THEN sii.amount ELSE 0 END), 0) as mtd_sales,
+            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.amount ELSE 0 END), 0) as today_sales,
+            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.amount ELSE 0 END), 0) as latest_day_sales
+        FROM `tabSales Invoice Item` sii
+        JOIN `tabSales Invoice` si ON si.name = sii.parent
+        WHERE si.docstatus = 1
+        GROUP BY COALESCE(sii.warehouse, 'POM Warehouse - CTS')
+    """, (latest_yr, latest_yr, latest_mo, today, latest_inv_date), as_dict=True)
+    wh_sales_stats = {row.warehouse: row for row in wh_sales_summary_raw}
+
+    # Query top items sold specifically per warehouse
+    top_items_by_wh_raw = frappe.db.sql("""
+        SELECT 
+            COALESCE(sii.warehouse, 'POM Warehouse - CTS') as warehouse,
+            sii.item_code,
+            COALESCE(i.item_name, sii.item_name, sii.item_code) as item_name,
+            COALESCE(SUM(sii.qty), 0) as qty,
+            COALESCE(SUM(sii.amount), 0) as sales
+        FROM `tabSales Invoice Item` sii
+        JOIN `tabSales Invoice` si ON si.name = sii.parent
+        LEFT JOIN `tabItem` i ON i.name = sii.item_code
+        WHERE si.docstatus = 1 AND sii.item_code IS NOT NULL AND sii.item_code != '' AND sii.item_code != 'Opening Item'
+        GROUP BY COALESCE(sii.warehouse, 'POM Warehouse - CTS'), sii.item_code, COALESCE(i.item_name, sii.item_name, sii.item_code)
+        ORDER BY sales DESC
+    """, as_dict=True)
+    top_items_by_warehouse = {}
+    for row in top_items_by_wh_raw:
+        wh = row.warehouse
+        if wh not in top_items_by_warehouse:
+            top_items_by_warehouse[wh] = []
+        if len(top_items_by_warehouse[wh]) < 10:
+            top_items_by_warehouse[wh].append({
+                "item": row.item_name,
+                "item_code": row.item_code,
+                "qty": flt(row.qty),
+                "sales": flt(row.sales),
+            })
+
+    # Count total and active bins per warehouse for real stock health evaluation (<= 100)
+    active_bins_per_wh = frappe.db.sql("""
+        SELECT warehouse, COUNT(*) as total_bins, SUM(CASE WHEN actual_qty > 0 THEN 1 ELSE 0 END) as in_stock_bins
+        FROM `tabBin`
+        GROUP BY warehouse
+    """, as_dict=True)
+    active_bins_map = {row.warehouse: row for row in active_bins_per_wh}
+
     warehouses_list = []
     store_performance = []
     warehouses = []
@@ -92,6 +156,18 @@ def get_dashboard_data():
         w_name = w.name
         w_val = flt(w.total_value)
         w_qty = flt(w.total_qty)
+        wh_sales = wh_sales_stats.get(w_name, {})
+        wh_bin_info = active_bins_map.get(w_name, {})
+
+        tot_b = wh_bin_info.get("total_bins", w.bin_count or 1)
+        in_stock_b = wh_bin_info.get("in_stock_bins", 0)
+        # Stock health bounded strictly <= 100 (percentage of SKUs in active stock)
+        stock_health = min(100, max(0, int((in_stock_b / (tot_b or 1)) * 100)))
+
+        store_today_sales = flt(wh_sales.get("today_sales", 0))
+        if store_today_sales == 0:
+            store_today_sales = flt(wh_sales.get("latest_day_sales", 0))
+
         warehouses_list.append({
             "name": w_name,
             "warehouse_name": w.warehouse_name or w_name,
@@ -105,12 +181,18 @@ def get_dashboard_data():
             "value": w_val,
             "binCount": w.bin_count,
             "utilization": min(96, max(24, int((w_val / max_val) * 86))),
+            "stockHealth": stock_health,
         })
         store_performance.append({
             "store": w_name,
             "location": w_name.split(' - ')[-1] if ' - ' in w_name else w_name,
-            "salesToday": w_val,
-            "transactions": w.bin_count,
+            "salesToday": store_today_sales,
+            "salesMTD": flt(wh_sales.get("mtd_sales", 0)),
+            "salesYTD": flt(wh_sales.get("ytd_sales", 0)),
+            "salesTotal": flt(wh_sales.get("total_sales", 0)),
+            "transactions": int(wh_sales.get("invoice_count", 0)),
+            "unitsSold": flt(wh_sales.get("units_sold", 0)),
+            "stockHealth": stock_health,
             "status": "Open",
         })
 
@@ -222,7 +304,7 @@ def get_dashboard_data():
             COALESCE(SUM(qty), 0) as qty,
             COALESCE(SUM(amount), 0) as sales
         FROM `tabSales Invoice Item`
-        WHERE item_code IS NOT NULL AND item_code != ''
+        WHERE item_code IS NOT NULL AND item_code != '' AND item_code != 'Opening Item'
         GROUP BY item_code
         ORDER BY sales DESC
         LIMIT 10
@@ -232,28 +314,13 @@ def get_dashboard_data():
         for idx, it in enumerate(top_items_raw)
     ]
 
-    # 11. Warehouse Sales Leaderboard
-    wh_sales_raw = frappe.db.sql("""
-        SELECT 
-            sii.warehouse,
-            COALESCE(SUM(sii.amount), 0) as revenue,
-            COALESCE(SUM(sii.qty), 0) as units_sold
-        FROM `tabSales Invoice Item` sii
-        WHERE sii.warehouse IS NOT NULL AND sii.warehouse != ''
-        GROUP BY sii.warehouse
-        ORDER BY revenue DESC
-    """, as_dict=True)
-    wh_sales_map = {row.warehouse: row for row in wh_sales_raw}
-
+    # 11. Warehouse Sales Leaderboard (Direct sales and stock analytics)
     warehouse_sales_leaderboard = []
     for idx, w in enumerate(warehouses_raw):
         wh_name = w.name
-        wh_data = wh_sales_map.get(wh_name, {})
-        rev = flt(wh_data.get("revenue", 0))
+        wh_data = wh_sales_stats.get(wh_name, {})
+        rev = flt(wh_data.get("total_sales", 0))
         sold = flt(wh_data.get("units_sold", 0))
-        if rev == 0 and total_sales > 0 and flt(w.total_value) > 0:
-            share = flt(w.total_value) / (inventory_value or 1)
-            rev = round(total_sales * share)
 
         loc = "National Capital District"
         if "LAE" in wh_name:
@@ -263,6 +330,11 @@ def get_dashboard_data():
         elif "8 MILE" in wh_name:
             loc = "8 Mile, Port Moresby"
 
+        wh_bin_info = active_bins_map.get(wh_name, {})
+        tot_b = wh_bin_info.get("total_bins", w.bin_count or 1)
+        in_stock_b = wh_bin_info.get("in_stock_bins", 0)
+        stock_health = min(100, max(0, int((in_stock_b / (tot_b or 1)) * 100)))
+
         warehouse_sales_leaderboard.append({
             "rank": idx + 1,
             "id": wh_name,
@@ -270,27 +342,33 @@ def get_dashboard_data():
             "displayName": wh_name.split(' - ')[0] if ' - ' in wh_name else wh_name,
             "location": loc,
             "revenue": rev,
-            "unitsSold": sold or round(rev / 180),
+            "unitsSold": sold,
             "salesShare": min(100, round((rev / (total_sales or 1)) * 100)),
-            "activeSkus": w.bin_count or 18,
+            "activeSkus": w.bin_count,
             "stockUnits": flt(w.total_qty),
             "stockValue": flt(w.total_value),
-            "topItems": [],
+            "stockHealth": stock_health,
+            "topItems": top_items_by_warehouse.get(wh_name, [])[:4],
         })
     warehouse_sales_leaderboard.sort(key=lambda x: x["revenue"], reverse=True)
     for idx, item in enumerate(warehouse_sales_leaderboard):
         item["rank"] = idx + 1
 
-    # 12. Item Sales Leaderboard
+    # 12. Item Sales Leaderboard (Query real item groups, on-hand stock, and top warehouse)
     item_sales_leaderboard_raw = frappe.db.sql("""
         SELECT 
             sii.item_code as code,
-            sii.item_name as name,
+            COALESCE(i.item_name, sii.item_name, sii.item_code) as name,
+            COALESCE(i.item_group, 'General') as item_group,
             COALESCE(SUM(sii.amount), 0) as revenue,
-            COALESCE(SUM(sii.qty), 0) as unitsSold
+            COALESCE(SUM(sii.qty), 0) as unitsSold,
+            COALESCE((SELECT SUM(b.actual_qty) FROM `tabBin` b WHERE b.item_code = sii.item_code), 0) as on_hand_stock,
+            COALESCE((SELECT b2.warehouse FROM `tabBin` b2 WHERE b2.item_code = sii.item_code ORDER BY b2.actual_qty DESC LIMIT 1), 'POM Warehouse - CTS') as top_warehouse
         FROM `tabSales Invoice Item` sii
-        WHERE sii.item_code IS NOT NULL AND sii.item_code != ''
-        GROUP BY sii.item_code, sii.item_name
+        JOIN `tabSales Invoice` si ON si.name = sii.parent
+        LEFT JOIN `tabItem` i ON i.name = sii.item_code
+        WHERE si.docstatus = 1 AND sii.item_code IS NOT NULL AND sii.item_code != '' AND sii.item_code != 'Opening Item'
+        GROUP BY sii.item_code, COALESCE(i.item_name, sii.item_name, sii.item_code), i.item_group
         ORDER BY revenue DESC
         LIMIT 10
     """, as_dict=True)
@@ -298,20 +376,21 @@ def get_dashboard_data():
     for it in item_sales_leaderboard_raw:
         rev = flt(it.revenue)
         units = flt(it.unitsSold)
+        stock_on_hand = flt(it.on_hand_stock)
         item_sales_leaderboard.append({
             "code": it.code,
             "name": it.name or it.code,
-            "group": "Home Appliances",
+            "group": it.item_group,
             "revenue": rev,
             "unitsSold": units,
             "avgPrice": round(rev / units) if units > 0 else rev,
-            "onHandStock": 50,
+            "onHandStock": stock_on_hand,
             "salesShare": min(100, round((rev / (total_sales or 1)) * 100)),
-            "topWarehouse": "Main Warehouse",
+            "topWarehouse": it.top_warehouse.split(' - ')[0] if ' - ' in it.top_warehouse else it.top_warehouse,
             "velocity": "High Demand 🔥" if units > 20 else ("Fast Mover ⚡" if units > 6 else "Steady 📈"),
         })
 
-    # 13. Recent Invoices for Cart Reports (First 100 submitted rows)
+    # 13. Recent Invoices for Cart Reports
     recent_sales_invoices = frappe.db.sql("""
         SELECT name, customer, grand_total, posting_date, company, status, due_date
         FROM `tabSales Invoice`
@@ -328,11 +407,12 @@ def get_dashboard_data():
         LIMIT 100
     """, as_dict=True)
 
+    # Fetch complete active bins (up to 1000 items) so all warehouses have drilldown data
     recent_bins = frappe.db.sql("""
         SELECT name, item_code, warehouse, actual_qty, stock_value, reserved_qty, projected_qty
         FROM `tabBin`
-        ORDER BY stock_value DESC
-        LIMIT 100
+        ORDER BY warehouse ASC, stock_value DESC
+        LIMIT 1000
     """, as_dict=True)
 
     recent_gl = frappe.db.sql("""
@@ -348,10 +428,13 @@ def get_dashboard_data():
     def fmt(val):
         return f"PGK {val:,.2f}"
 
-    # 14. Sales vs Inventory Correlation per Warehouse
+    # 14. Sales vs Inventory Correlation per Warehouse (Authentic stock movement & run-rate)
     sales_vs_inventory = []
     for idx, w in enumerate(warehouses_raw):
         w_name = w.name
+        wh_sales = wh_sales_stats.get(w_name, {})
+        wh_top_items = top_items_by_warehouse.get(w_name, [])
+
         wh_bins = frappe.db.sql("""
             SELECT b.item_code, COALESCE(i.item_name, b.item_code) as item_name, b.actual_qty, b.stock_value
             FROM `tabBin` b
@@ -361,29 +444,62 @@ def get_dashboard_data():
             LIMIT 6
         """, (w_name,), as_dict=True)
 
+        bin_items = [b.item_code for b in wh_bins]
+        item_sales_map = {}
+        if bin_items:
+            placeholders = ", ".join(["%s"] * len(bin_items))
+            real_sales_raw = frappe.db.sql(f"""
+                SELECT sii.item_code, COALESCE(SUM(sii.qty), 0) as sold_qty
+                FROM `tabSales Invoice Item` sii
+                JOIN `tabSales Invoice` si ON si.name = sii.parent
+                WHERE si.docstatus = 1 AND (sii.warehouse = %s OR (sii.warehouse IS NULL AND %s = 'POM Warehouse - CTS'))
+                  AND sii.item_code IN ({placeholders})
+                GROUP BY sii.item_code
+            """, (w_name, w_name, *bin_items), as_dict=True)
+            item_sales_map = {row.item_code: flt(row.sold_qty) for row in real_sales_raw}
+
         chart_items = [
             {
                 "item": b.item_name,
                 "itemCode": b.item_code,
                 "inventory": max(0, int(flt(b.actual_qty))),
-                "sales": max(0, int(flt(b.actual_qty) * 0.35)),
+                "sales": int(item_sales_map.get(b.item_code, 0)),
             }
             for b in wh_bins
         ]
 
         top_movement = [
             {
-                "code": b.item_code,
-                "description": b.item_name,
-                "units": int(flt(b.actual_qty)),
+                "code": it["item_code"],
+                "description": it["item"],
+                "units": int(it["qty"]),
+                "sales": it["sales"],
             }
-            for b in wh_bins[:8]
+            for it in wh_top_items[:8]
         ]
+        if not top_movement:
+            top_movement = [
+                {
+                    "code": b.item_code,
+                    "description": b.item_name,
+                    "units": int(flt(b.actual_qty)),
+                    "sales": 0,
+                }
+                for b in wh_bins[:8]
+            ]
 
         tot_stock = flt(w.total_qty)
         tot_val = flt(w.total_value)
-        tot_sales_units = max(10, int(tot_stock * 0.25))
-        tot_sales_amt = round(tot_val * 0.3, 2)
+        tot_sales_units = flt(wh_sales.get("units_sold", 0))
+        tot_sales_amt = round(flt(wh_sales.get("total_sales", 0)), 2)
+
+        # Authentic Stock-to-Sales Coverage Ratio (Current stock divided by sales run-rate)
+        coverage_ratio = f"{(tot_stock / tot_sales_units):.1f}" if tot_sales_units > 0 else "N/A"
+
+        wh_bin_info = active_bins_map.get(w_name, {})
+        tot_b = wh_bin_info.get("total_bins", w.bin_count or 1)
+        in_stock_b = wh_bin_info.get("in_stock_bins", 0)
+        stock_health = min(100, max(0, int((in_stock_b / (tot_b or 1)) * 100)))
 
         sales_vs_inventory.append({
             "id": w_name,
@@ -396,9 +512,10 @@ def get_dashboard_data():
             "binCount": w.bin_count,
             "totalStock": tot_stock,
             "totalStockValue": tot_val,
-            "totalSalesUnits": tot_sales_units,
+            "totalSalesUnits": int(tot_sales_units),
             "totalSalesAmount": tot_sales_amt,
-            "coverageRatio": f"{tot_stock / tot_sales_units:.1f}" if tot_sales_units else "4.2",
+            "coverageRatio": coverage_ratio,
+            "stockHealth": stock_health,
         })
 
     return {
@@ -453,6 +570,7 @@ def get_dashboard_data():
         "warehouseSalesLeaderboard": warehouse_sales_leaderboard,
         "itemSalesLeaderboard": item_sales_leaderboard,
         "salesVsInventory": sales_vs_inventory,
+        "topItemsByWarehouse": top_items_by_warehouse,
     }
 
 @frappe.whitelist()

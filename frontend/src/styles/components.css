@@ -4274,6 +4274,7 @@ td {
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -4989,3 +4990,203 @@ td {
   background: #fef3c7;
   color: #b45309;
 }
+
+/* ==========================================================================
+   TOP ENTITIES (SUPPLIERS & CUSTOMERS SIDEBAR) - SCREENSHOT 1 FIX
+   ========================================================================== */
+.top-entities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.top-entity-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.top-entity-item:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+.entity-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #dbeafe;
+  flex-shrink: 0;
+}
+
+.top-entity-item:nth-child(1) .entity-rank {
+  background: #fef3c7;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.top-entity-item:nth-child(2) .entity-rank {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.top-entity-item:nth-child(3) .entity-rank {
+  background: #ffedd5;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+
+.entity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.entity-info strong {
+  font-size: 0.88rem;
+  color: #1e293b;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-info small {
+  font-size: 0.74rem;
+  color: #64748b;
+  display: block;
+}
+
+.entity-value {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.entity-value strong {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   SALES HORIZON BARS & MINI CHARTS - SCREENSHOT 2 FIX
+   ========================================================================== */
+.bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 55px 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-row label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.bar-row .bar-track {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  display: block;
+}
+
+.bar-row .bar-track i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.bar-row strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-align: right;
+  min-width: 80px;
+}
+
+.chart-frame--mini {
+  padding: 6px 4px 0 4px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+}
+
+/* ==========================================================================
+   STORE DRILLDOWN & INTERACTIVE ROWS
+   ========================================================================== */
+.store-clickable-row {
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.store-clickable-row:hover {
+  background: #f1f5f9 !important;
+}
+
+.store-clickable-row.is-selected {
+  background: #eff6ff !important;
+  border-left: 3px solid #2563eb;
+}
+
+.store-clickable-row.is-selected strong {
+  color: #1d4ed8;
+}
+
+.stock-health-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.stock-health-tag.is-healthy {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.stock-health-tag.is-moderate {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.stock-health-tag.is-critical {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+

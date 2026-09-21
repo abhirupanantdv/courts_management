@@ -1,12 +1,19 @@
 import { useState } from 'react';
-import { ArrowRight, ShieldCheck, Store, Tag, Users } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Store, Tag, Users, Activity } from 'lucide-react';
 import { formatNumber } from '../../utils/formatters.js';
 import { MoneyAmount } from '../common/MoneyAmount.jsx';
 
-export function StorePerformance({ stores = [], onNavigate }) {
+export function StorePerformance({ stores = [], selectedStore, onSelectStore, onNavigate }) {
   const [timeRange, setTimeRange] = useState('today');
 
-  const totalSales = stores.reduce((total, store) => total + Number(store.salesToday || 0), 0);
+  const getStoreSales = (store) => {
+    if (timeRange === 'today') return Number(store.salesToday || 0);
+    if (timeRange === 'month') return Number(store.salesMTD || store.salesToday || 0);
+    if (timeRange === 'year') return Number(store.salesYTD || store.salesTotal || 0);
+    return Number(store.salesTotal || store.salesYTD || store.salesToday || 0);
+  };
+
+  const totalSales = stores.reduce((total, store) => total + getStoreSales(store), 0);
   const totalTransactions = stores.reduce((total, store) => total + Number(store.transactions || 0), 0);
   const averageSale = totalTransactions ? totalSales / totalTransactions : 0;
 
@@ -21,8 +28,8 @@ export function StorePerformance({ stores = [], onNavigate }) {
           aria-label="Filter store performance time"
         >
           <option value="today">Today</option>
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
+          <option value="month">This Month (MTD)</option>
+          <option value="year">This Year (YTD)</option>
           <option value="all">All Time</option>
         </select>
       </div>
@@ -45,7 +52,7 @@ export function StorePerformance({ stores = [], onNavigate }) {
           <Users size={20} />
           <div className="mini-stat-info">
             <strong>{formatNumber(totalTransactions)}</strong>
-            <small>Transactions</small>
+            <small>Invoices</small>
           </div>
         </span>
         <span>
@@ -64,21 +71,37 @@ export function StorePerformance({ stores = [], onNavigate }) {
               <th>Location</th>
               <th>Sales</th>
               <th>Trans.</th>
-              <th>Status</th>
+              <th>Stock Health</th>
               <th />
             </tr>
           </thead>
           <tbody>
-            {stores.length ? stores.map((store) => (
-              <tr key={store.store}>
-                <td><strong>{store.store}</strong></td>
-                <td>{store.location}</td>
-                <td className="money"><MoneyAmount value={store.salesToday} /></td>
-                <td>{formatNumber(store.transactions)}</td>
-                <td><span className="status-chip is-success">◆ {store.status}</span></td>
-                <td><ArrowRight size={15} /></td>
-              </tr>
-            )) : (
+            {stores.length ? stores.map((store) => {
+              const isSelected = selectedStore === store.store;
+              const salesVal = getStoreSales(store);
+              const healthScore = Math.min(100, Math.max(0, store.stockHealth ?? 95));
+              const healthClass = healthScore >= 80 ? 'is-healthy' : healthScore >= 50 ? 'is-moderate' : 'is-critical';
+
+              return (
+                <tr 
+                  key={store.store}
+                  className={`store-clickable-row ${isSelected ? 'is-selected' : ''}`}
+                  onClick={() => onSelectStore && onSelectStore(store.store)}
+                  title="Click to drill down into store details"
+                >
+                  <td><strong>{store.store.split(' - ')[0]}</strong></td>
+                  <td>{store.location}</td>
+                  <td className="money"><MoneyAmount value={salesVal} /></td>
+                  <td>{formatNumber(store.transactions)}</td>
+                  <td>
+                    <span className={`stock-health-tag ${healthClass}`} title={`Health score <= 100`}>
+                      {healthScore}/100
+                    </span>
+                  </td>
+                  <td><ArrowRight size={15} color={isSelected ? '#2563eb' : '#94a3b8'} /></td>
+                </tr>
+              );
+            }) : (
               <tr>
                 <td colSpan="6" className="empty-cell">No store or warehouse records found.</td>
               </tr>

@@ -242,3 +242,67 @@ bench --site courts.anantdv.com clear-cache
 # (Killing the master gunicorn process triggers supervisor to restart it with preloaded code)
 ps -ef | grep "/home/adv/courts-frappe/env/bin/gunicorn" | grep -v grep | head -n 1 | awk '{print $2}' | xargs kill
 ```
+
+---
+
+## 9. Store Drilldown, Business Logic Calculations & UI Fixes
+
+### 1. Calculation Formulas & Business Logic
+
+#### A. Invoiced Sales Movement:
+- **Data Sources:** `tabSales Invoice Item` joined to `tabSales Invoice` (`docstatus = 1`).
+- **Units Sold:**
+  $$\text{Sales Movement Units} = \sum \text{sii.qty} \quad \text{(for the specified warehouse and item)}$$
+- **Sales Revenue:**
+  $$\text{Sales Movement Revenue} = \sum \text{sii.amount}$$
+- **Velocity Categorization:**
+  - `High Demand 🔥`: $> 20$ units sold.
+  - `Fast Mover ⚡`: $> 6$ units sold.
+  - `Steady 📈`: $\le 6$ units sold.
+
+#### B. Stock-to-Sales Coverage Ratio:
+- **Data Sources:** Available on-hand quantity from `tabBin.actual_qty` compared to the sales run-rate from `tabSales Invoice Item.qty`.
+- **Formula:**
+  $$\text{Stock Coverage Ratio} = \frac{\text{Current Stock Units}}{\text{Sales Units Sold (Run-rate)}}$$
+- **Interpretation:** Indicates how many operational periods/months the current inventory on hand will sustain demand without replenishment. If a warehouse has 0 sales in the period, it is accurately designated as **"Stagnant / Non-moving"** rather than an arbitrary mock multiplier.
+
+#### C. Stock Health Index ($\le 100$):
+- **Scale:** Strictly normalized between **0 and 100**.
+- **Formula:**
+  $$\text{Stock Health Index} = \min\left(100, \max\left(0, \text{round}\left(\frac{\text{In-Stock Active SKUs}}{\text{Total Tracked SKUs}} \times 100\right)\right)\right)$$
+- **UI Presentation:** Displayed across store performance, drilldowns, and inventory cards as **"Stock Health: XX/100 (Optimal $\le 100$)"**.
+
+---
+
+### 2. Elimination of Hardcoded / Mock Values
+All artificial multipliers and fallback constants have been permanently removed and replaced with direct MariaDB queries:
+- **`* 0.35` multiplier on bin sales** $\rightarrow$ Replaced with actual item sales from `tabSales Invoice Item`.
+- **`* 0.25` multiplier on warehouse sales units** $\rightarrow$ Replaced with genuine warehouse units sold.
+- **`* 0.30` multiplier on warehouse revenue** $\rightarrow$ Replaced with genuine warehouse revenue.
+- **Fallback `"4.2"` coverage ratio** $\rightarrow$ Replaced with live mathematical calculation or `"N/A" / "Stagnant"`.
+- **`"Home Appliances"` group** $\rightarrow$ Replaced with live `item_group` from `tabItem`.
+- **`50` on-hand stock** $\rightarrow$ Replaced with real sum of `actual_qty` from `tabBin`.
+- **`"Main Warehouse"`** $\rightarrow$ Replaced with actual top warehouse holding the highest on-hand stock.
+- **`todaySales * 1.8` (MTD) & `todaySales * 3.2` (YTD)** $\rightarrow$ Replaced with authentic store sales aggregated across MTD and YTD calendar ranges.
+- **Global `LIMIT 100` on bins** $\rightarrow$ Expanded to `LIMIT 1000` (covering all 812 bins across Courts warehouses).
+
+---
+
+### 3. Store Drilldown Interactivity
+- **Row Click Interactivity:** Clicking any store row in `StorePerformance` automatically activates the selected store, highlights the active row, and smoothly scrolls to the `StoreDetails` drilldown card.
+- **Dynamic Time Horizons:** Time-range filter (`Today`, `This Month / MTD`, `This Year / YTD`, `All Time`) dynamically updates store revenue.
+- **Store-Specific Top Items:** Switching stores in the dropdown or table updates the Top Items tab to display that specific warehouse's top revenue items.
+
+---
+
+### 4. UI / CSS Styling Repairs
+
+#### Screenshot 1 Fix: Top Suppliers by Spend (`PurchasesPage.jsx` & `SalesPage.jsx`)
+- Added flexbox rules for `.top-entities-list`, `.top-entity-item`, `.entity-rank`, `.entity-info`, and `.entity-value`.
+- Displays rank as a distinctive colored badge (`#1`, `#2`, `#3`), stacks supplier name and invoice count cleanly, and aligns the PGK amount neatly on the right.
+
+#### Screenshot 2 Fix: Sales Horizon & Inventory Distribution (`StoreDetails.jsx`)
+- Added `.bars-list` and `.bar-row` using CSS grid (`55px 1fr auto`).
+- Resolves the text squash issue (`TodayPGK 1.59M`), placing the period label on the left, an animated progress track in the center, and the formatted PGK currency on the right.
+- Enhanced `.chart-frame--mini` with responsive padding and tooltips.
+

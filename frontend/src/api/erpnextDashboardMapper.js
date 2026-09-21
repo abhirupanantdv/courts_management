@@ -126,7 +126,7 @@ function buildSalesVsInventorySections({ warehouses, bins, salesItems, items, in
     const totalStockValue = binRows.reduce((t, b) => t + Number(b.stock_value || 0), 0);
     const totalSalesUnits = salesForWarehouse.reduce((t, r) => t + Number(r.qty || 0), 0);
     const totalSalesAmount = salesForWarehouse.reduce((t, r) => t + Number(r.amount || 0), 0);
-    const coverageRatio = totalSalesUnits > 0 ? (totalStock / totalSalesUnits).toFixed(1) : '4.2';
+    const coverageRatio = totalSalesUnits > 0 ? (totalStock / totalSalesUnits).toFixed(1) : 'N/A';
 
     return {
       id: warehouseName,

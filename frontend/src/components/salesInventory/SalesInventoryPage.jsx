@@ -66,14 +66,16 @@ export function SalesInventoryPage({ data, onNavigate }) {
   }, [bins]);
 
   const totalSoldUnits = useMemo(() => {
+    const fromSections = sections.reduce((t, s) => t + Number(s.totalSalesUnits || 0), 0);
+    if (fromSections > 0) return fromSections;
     return salesItems.reduce((t, i) => t + Number(i.qty || 0), 0);
-  }, [salesItems]);
+  }, [sections, salesItems]);
 
   const totalStockVal = useMemo(() => {
     return bins.reduce((t, b) => t + Number(b.stock_value || 0), 0);
   }, [bins]);
 
-  const stockToSalesRatio = totalSoldUnits > 0 ? (totalStockUnits / totalSoldUnits).toFixed(1) : '4.2';
+  const stockToSalesRatio = totalSoldUnits > 0 ? (totalStockUnits / totalSoldUnits).toFixed(1) : 'N/A';
 
   return (
     <main className="module-page sales-inventory-animated-page">
@@ -280,26 +282,28 @@ function AnimatedLocationCard({ section, searchItem = '', onNavigate, animationI
         </div>
         <div className="card-mini-metric">
           <small>Stock Coverage</small>
-          <strong style={{ color: '#0284c7' }}>{ratio}x <span className="unit-tag">Depth</span></strong>
+          <strong style={{ color: '#0284c7' }}>
+            {ratio !== 'N/A' ? `${ratio}x` : 'Stagnant'} <span className="unit-tag">Depth</span>
+          </strong>
         </div>
         <div className="card-mini-metric">
           <small>Valuation</small>
-          <strong><MoneyAmount value={section.totalStockValue || (stockUnits * 145)} /></strong>
+          <strong><MoneyAmount value={section.totalStockValue || 0} /></strong>
         </div>
       </div>
 
-      {/* Animated Coverage Bar */}
+      {/* Animated Coverage Bar with Stock Health <= 100 */}
       <div className="coverage-visual-bar">
         <div className="coverage-labels">
-          <span>Stock Depth Health</span>
+          <span>Stock Health: {Math.min(100, Math.max(0, section.stockHealth ?? 95))}/100</span>
           <span className="coverage-badge">
-            <Sparkles size={11} /> High Availability
+            <Sparkles size={11} /> Target &le; 100 Scale
           </span>
         </div>
         <div className="coverage-track">
           <div 
             className="coverage-fill"
-            style={{ width: `${Math.min(94, Math.max(25, parseFloat(ratio) * 14))}%` }}
+            style={{ width: `${Math.min(100, Math.max(10, section.stockHealth ?? 95))}%` }}
           />
         </div>
       </div>
