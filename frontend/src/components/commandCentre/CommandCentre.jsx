@@ -65,6 +65,16 @@ export function CommandCentre({
     };
   }, [donutWarehouse, data.itemDistribution, bins, items]);
 
+  const [selectedStore, setSelectedStore] = useState(data.storePerformance?.[0]?.store || '');
+
+  const handleSelectStore = (storeName) => {
+    setSelectedStore(storeName);
+    const el = document.getElementById('store-drilldown-panel');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+
   if (activePage === 'salesInventory') {
     return <SalesInventoryPage data={data} onNavigate={onNavigate} />;
   }
@@ -83,16 +93,6 @@ export function CommandCentre({
   if (activePage === 'reports') {
     return <ReportsPage data={data} onNavigate={onNavigate} initialReportId={activeReportId} />;
   }
-
-  const [selectedStore, setSelectedStore] = useState(data.storePerformance?.[0]?.store || '');
-
-  const handleSelectStore = (storeName) => {
-    setSelectedStore(storeName);
-    const el = document.getElementById('store-drilldown-panel');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  };
 
   return (
     <main className="dashboard-main">

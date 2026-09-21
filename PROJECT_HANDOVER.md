@@ -389,3 +389,12 @@ Implemented a robust, unified 3-tier responsive CSS design system in `frontend/s
 - **Module Pages & Reports:** Vertically stacked header and action buttons; full-width toolbar with touch-friendly search and select filters; horizontal touch-scrolling report selector tabs (`.reports-catalog-bar`); 2-column report KPI tiles.
 - **Universal Touch Tables:** All tabular interfaces wrapped in `.table-scroll` with `overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;` allowing smooth native gesture scrolling without causing page-level horizontal blowout.
 - **Login & ERP Modals:** Edge-to-edge modal layout with `width: 100%; max-height: 92vh; border-radius: 12px;` on small viewports.
+
+---
+
+### 7. Resolution of Minified React Error #300 (Route Navigation Failure)
+
+- **Issue Reported:** Clicking any module route (Sales, Inventory, Purchases, Finance, Reports, or Sales vs Inventory) caused an application crash:
+  `Minified React error #300: Rendered fewer hooks than expected. This may be caused by an accidental early return statement.`
+- **Root Cause Identified:** In `frontend/src/components/commandCentre/CommandCentre.jsx`, `const [selectedStore, setSelectedStore] = useState(...)` and `handleSelectStore` were positioned *below* the conditional early return statements (`if (activePage === 'sales') return ...`). When switching routes, the component returned early, skipping `useState(selectedStore)`. React detected a mismatch in the hook call count and threw invariant error #300.
+- **Solution Applied:** Moved `useState(selectedStore)` and `handleSelectStore` to the top level of `CommandCentre.jsx` before any conditional return statements. All React hooks now execute unconditionally on every render cycle, ensuring stable navigation across all routes and shortcuts.
