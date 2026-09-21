@@ -111,14 +111,15 @@ def get_dashboard_data():
     """, (latest_yr, latest_yr, latest_mo, today, latest_inv_date), as_dict=True)
     wh_sales_stats = {row.warehouse: row for row in wh_sales_summary_raw}
 
-    # Query top items sold specifically per warehouse
+    # Query top items sold specifically per warehouse with genuine on-hand stock
     top_items_by_wh_raw = frappe.db.sql("""
         SELECT 
             COALESCE(sii.warehouse, 'POM Warehouse - CTS') as warehouse,
             sii.item_code,
             COALESCE(i.item_name, sii.item_name, sii.item_code) as item_name,
             COALESCE(SUM(sii.qty), 0) as qty,
-            COALESCE(SUM(sii.amount), 0) as sales
+            COALESCE(SUM(sii.amount), 0) as sales,
+            COALESCE((SELECT SUM(b.actual_qty) FROM `tabBin` b WHERE b.warehouse = COALESCE(sii.warehouse, 'POM Warehouse - CTS') AND b.item_code = sii.item_code), 0) as on_hand_stock
         FROM `tabSales Invoice Item` sii
         JOIN `tabSales Invoice` si ON si.name = sii.parent
         LEFT JOIN `tabItem` i ON i.name = sii.item_code
@@ -133,10 +134,15 @@ def get_dashboard_data():
             top_items_by_warehouse[wh] = []
         if len(top_items_by_warehouse[wh]) < 10:
             top_items_by_warehouse[wh].append({
+                "name": row.item_name,
                 "item": row.item_name,
+                "code": row.item_code,
                 "item_code": row.item_code,
                 "qty": flt(row.qty),
+                "units": flt(row.qty),
                 "sales": flt(row.sales),
+                "onHandStock": flt(row.on_hand_stock),
+                "on_hand_stock": flt(row.on_hand_stock),
             })
 
     # Count total and active bins per warehouse for real stock health evaluation (<= 100)
@@ -241,7 +247,33 @@ def get_dashboard_data():
             "purchase": val,
         })
 
-    # 7. Item Distribution by Item Group
+    # 7. Category Revenue Breakdown (Replacing Warehouse Item Distribution)
+    category_sales_raw = frappe.db.sql("""
+        SELECT 
+            COALESCE(i.item_group, 'General') as name,
+            COALESCE(SUM(sii.amount), 0) as revenue,
+            COALESCE(SUM(sii.qty), 0) as units_sold
+        FROM `tabSales Invoice Item` sii
+        JOIN `tabSales Invoice` si ON si.name = sii.parent
+        LEFT JOIN `tabItem` i ON i.name = sii.item_code
+        WHERE si.docstatus = 1 AND (sii.item_code IS NULL OR sii.item_code != 'Opening Item')
+        GROUP BY i.item_group
+        ORDER BY revenue DESC
+        LIMIT 6
+    """, as_dict=True)
+    cat_tot_revenue = sum([flt(c.revenue) for c in category_sales_raw]) or 1
+    category_sales = [
+        {
+            "name": c.name,
+            "revenue": flt(c.revenue),
+            "units": flt(c.units_sold),
+            "share": round((flt(c.revenue) / cat_tot_revenue) * 100),
+            "value": round((flt(c.revenue) / cat_tot_revenue) * 100),
+        }
+        for c in category_sales_raw
+    ]
+
+    # 7b. Item Distribution by Item Group
     item_distribution_raw = frappe.db.sql("""
         SELECT 
             COALESCE(i.item_group, 'Other') as name,
@@ -409,9 +441,10 @@ def get_dashboard_data():
 
     # Fetch complete active bins (up to 1000 items) so all warehouses have drilldown data
     recent_bins = frappe.db.sql("""
-        SELECT name, item_code, warehouse, actual_qty, stock_value, reserved_qty, projected_qty
-        FROM `tabBin`
-        ORDER BY warehouse ASC, stock_value DESC
+        SELECT b.name, b.item_code, COALESCE(i.item_name, b.item_code) as item_name, b.warehouse, b.actual_qty, b.stock_value, b.reserved_qty, b.projected_qty
+        FROM `tabBin` b
+        LEFT JOIN `tabItem` i ON i.name = b.item_code
+        ORDER BY b.warehouse ASC, b.stock_value DESC
         LIMIT 1000
     """, as_dict=True)
 
@@ -571,6 +604,7 @@ def get_dashboard_data():
         "itemSalesLeaderboard": item_sales_leaderboard,
         "salesVsInventory": sales_vs_inventory,
         "topItemsByWarehouse": top_items_by_warehouse,
+        "categorySales": category_sales,
     }
 
 @frappe.whitelist()

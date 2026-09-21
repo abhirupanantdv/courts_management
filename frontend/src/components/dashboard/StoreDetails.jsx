@@ -199,11 +199,11 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
       )}
 
       {activeTab === 'Stock Balances' && (
-        <div className="table-scroll compact-table" style={{ maxHeight: '160px', overflowY: 'auto' }}>
+        <div className="table-scroll compact-table" style={{ maxHeight: '170px', overflowY: 'auto' }}>
           <table>
             <thead>
               <tr>
-                <th>Item Code</th>
+                <th>Item</th>
                 <th style={{ textAlign: 'right' }}>Stock Qty</th>
                 <th style={{ textAlign: 'right' }}>Valuation</th>
               </tr>
@@ -211,8 +211,13 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
             <tbody>
               {storeBins.length ? storeBins.slice(0, 10).map((b) => (
                 <tr key={b.name || b.item_code}>
-                  <td><strong>{b.item_code}</strong></td>
-                  <td style={{ textAlign: 'right' }}>{Number(b.actual_qty || 0).toLocaleString()}</td>
+                  <td>
+                    <strong style={{ display: 'block', fontSize: '0.86rem' }}>{b.item_name || b.item_code}</strong>
+                    <code style={{ fontSize: '0.72rem', color: '#64748b' }}>{b.item_code}</code>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <span className="stock-health-tag is-healthy">{Number(b.actual_qty || 0).toLocaleString()}</span>
+                  </td>
                   <td style={{ textAlign: 'right' }}><MoneyAmount value={b.stock_value} /></td>
                 </tr>
               )) : (
@@ -226,27 +231,41 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
       )}
 
       {(activeTab === 'Sales Analysis' || activeTab === 'Top Items') && (
-        <div className="table-scroll compact-table" style={{ maxHeight: '160px', overflowY: 'auto' }}>
+        <div className="table-scroll compact-table" style={{ maxHeight: '170px', overflowY: 'auto' }}>
           <table>
             <thead>
               <tr>
-                <th>Item</th>
-                <th style={{ textAlign: 'right' }}>Units Sold</th>
+                <th>Merchandise Item</th>
+                <th style={{ textAlign: 'right' }}>Sold</th>
+                <th style={{ textAlign: 'right' }}>Stock on Hand</th>
                 <th style={{ textAlign: 'right' }}>Revenue</th>
               </tr>
             </thead>
             <tbody>
-              {storeTopItems.length ? storeTopItems.slice(0, 6).map((item) => (
-                <tr key={item.item_code || item.item}>
-                  <td title={item.item}>
-                    <strong>{item.item || item.item_code}</strong>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>{Number(item.qty || 0).toLocaleString()}</td>
-                  <td style={{ textAlign: 'right' }}><MoneyAmount value={item.sales} /></td>
-                </tr>
-              )) : (
+              {storeTopItems.length ? storeTopItems.slice(0, 6).map((item) => {
+                const title = item.name || item.item || item.item_code || 'Product';
+                const code = item.code || item.item_code || '';
+                const onHand = Number(item.onHandStock ?? item.on_hand_stock ?? 0);
+                const unitsSold = Number(item.qty ?? item.units ?? 0);
+
+                return (
+                  <tr key={code || title}>
+                    <td title={title}>
+                      <strong style={{ display: 'block', fontSize: '0.86rem' }}>{title}</strong>
+                      <code style={{ fontSize: '0.72rem', color: '#64748b' }}>{code}</code>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>{unitsSold.toLocaleString()} units</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span className={`stock-health-tag ${onHand > 0 ? 'is-healthy' : 'is-critical'}`}>
+                        {onHand.toLocaleString()} in stock
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}><MoneyAmount value={item.sales} /></td>
+                  </tr>
+                );
+              }) : (
                 <tr>
-                  <td colSpan="3" className="empty-cell">No sales recorded for this warehouse yet.</td>
+                  <td colSpan="4" className="empty-cell">No sales recorded for this warehouse yet.</td>
                 </tr>
               )}
             </tbody>

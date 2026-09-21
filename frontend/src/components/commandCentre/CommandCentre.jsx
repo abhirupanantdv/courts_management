@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Hero } from './Hero.jsx';
 import { SalesChart } from '../charts/SalesChart.jsx';
-import { DashboardDonut } from '../charts/DashboardDonut.jsx';
+import { CategoryPerformanceCard } from '../dashboard/CategoryPerformanceCard.jsx';
 import { OverviewCards } from '../dashboard/OverviewCards.jsx';
 import { ManagementOverview } from '../dashboard/ManagementOverview.jsx';
 import { QuickActions } from '../dashboard/QuickActions.jsx';
@@ -109,14 +109,9 @@ export function CommandCentre({
           todayTotal={data.heroMetrics.salesToday}
           onNavigate={onNavigate}
         />
-        <DashboardDonut
-          title="Warehouse Item Distribution"
-          data={donutFiltered.data}
-          total={donutFiltered.total}
-          subtitle="Items"
-          warehouses={warehousesList}
-          selectedWarehouse={donutWarehouse}
-          onWarehouseChange={setDonutWarehouse}
+        <CategoryPerformanceCard
+          categories={data.categorySales || []}
+          onNavigate={onNavigate}
         />
         <QuickActions onNavigate={onNavigate} />
       </section>

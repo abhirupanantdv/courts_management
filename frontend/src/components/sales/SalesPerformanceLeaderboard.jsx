@@ -374,45 +374,41 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
 
       {/* VIEW 3: STORE DRILLDOWN SHOWCASE */}
       {activeTab === 'drilldown' && (
-        <div className="drilldown-showcase-card">
-          {/* Left Store Selector List */}
-          <div className="drilldown-sidebar">
-            <h4>Select Branch Warehouse</h4>
-            <div className="drilldown-sidebar-list">
+        <div className="drilldown-showcase-container">
+          {/* Top Warehouse Selector Strip - Clearly shows which warehouse is selected without redundant lists */}
+          <div className="drilldown-selector-strip">
+            <span className="strip-label">Select Warehouse:</span>
+            <div className="strip-pills-row">
               {rawWarehouses.map((wh, idx) => {
                 const isActive = wh.id === selectedWarehouseId;
                 return (
                   <button
                     key={wh.id}
                     type="button"
-                    className={`drilldown-wh-btn ${isActive ? 'is-active' : ''}`}
+                    className={`drilldown-pill-btn ${isActive ? 'is-active' : ''}`}
                     onClick={() => setSelectedWarehouseId(wh.id)}
                   >
-                    <div className="wh-btn-left">
-                      <span className="wh-btn-rank">#{idx + 1}</span>
-                      <span className="wh-btn-name">{wh.displayName || wh.name}</span>
-                    </div>
-                    <span className="wh-btn-rev">
-                      <MoneyAmount value={wh.revenue} />
-                    </span>
+                    <span className="pill-rank">#{idx + 1}</span>
+                    <span className="pill-name">{wh.displayName || wh.name}</span>
+                    <span className="pill-rev"><MoneyAmount value={wh.revenue} /></span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Right Detailed Performance Panel */}
+          {/* Detailed Performance Panel for Selected Warehouse */}
           {activeDrilldownWarehouse ? (
-            <div className="drilldown-content-panel">
-              {/* Header Banner */}
+            <div className="drilldown-main-card">
+              {/* Header Hero Banner */}
               <div className="drilldown-hero-banner">
                 <div className="drilldown-hero-title">
                   <div className="store-tag">
-                    <Store size={15} />
-                    <span>Courts Branch Operations</span>
+                    <Store size={16} />
+                    <span>Active Store Outlet &bull; {activeDrilldownWarehouse.displayName || activeDrilldownWarehouse.name}</span>
                   </div>
                   <h3>{activeDrilldownWarehouse.displayName || activeDrilldownWarehouse.name}</h3>
-                  <p>{activeDrilldownWarehouse.location} &bull; Active Commercial Center</p>
+                  <p>{activeDrilldownWarehouse.location} &bull; Operational Commercial Hub</p>
                 </div>
                 <div className="drilldown-hero-metrics">
                   <div className="drilldown-hero-stat">
@@ -423,7 +419,17 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
                   </div>
                   <div className="drilldown-hero-stat">
                     <small>Units Sold</small>
-                    <strong>{formatNumber(activeDrilldownWarehouse.unitsSold)}</strong>
+                    <strong>{formatNumber(activeDrilldownWarehouse.unitsSold)} Units</strong>
+                  </div>
+                  <div className="drilldown-hero-stat">
+                    <small>Stock on Hand</small>
+                    <strong>{formatNumber(activeDrilldownWarehouse.stockUnits)} Units</strong>
+                  </div>
+                  <div className="drilldown-hero-stat">
+                    <small>Stock Health</small>
+                    <strong style={{ color: '#059669' }}>
+                      {Math.min(100, Math.max(0, activeDrilldownWarehouse.stockHealth ?? 95))}/100
+                    </strong>
                   </div>
                   <div className="drilldown-hero-stat">
                     <small>Network Share</small>
@@ -432,27 +438,42 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
                 </div>
               </div>
 
-              {/* Itemized Fast Sellers in this Branch */}
+              {/* Itemized Fast Sellers in this Branch with Name & Live Stock On Hand */}
               <div className="drilldown-sku-list-section">
                 <div className="section-head">
                   <Sparkles size={16} style={{ color: '#d97706' }} />
                   <h4>Top Velocity Merchandise at this Location</h4>
                 </div>
+
                 <div className="drilldown-skus-grid">
                   {activeDrilldownWarehouse.topItems?.length ? (
-                    activeDrilldownWarehouse.topItems.map((sku, i) => (
-                      <div key={`${activeDrilldownWarehouse.id}-${sku.code}`} className="drilldown-sku-card">
-                        <div className="sku-rank-pill">#{i + 1}</div>
-                        <div className="sku-info">
-                          <strong>{sku.name}</strong>
-                          <code>{sku.code}</code>
+                    activeDrilldownWarehouse.topItems.map((sku, i) => {
+                      const itemName = sku.name || sku.item || sku.item_name || sku.code || sku.item_code || 'Merchandise Item';
+                      const itemCode = sku.code || sku.item_code || 'SKU';
+                      const unitsSold = Number(sku.units ?? sku.qty ?? 0);
+                      const onHand = Number(sku.onHandStock ?? sku.on_hand_stock ?? 0);
+                      const salesAmt = Number(sku.sales ?? 0);
+
+                      return (
+                        <div key={`${activeDrilldownWarehouse.id}-${itemCode}-${i}`} className="drilldown-sku-card">
+                          <div className="sku-rank-pill">#{i + 1}</div>
+                          <div className="sku-info">
+                            <strong className="sku-name" title={itemName}>{itemName}</strong>
+                            <code className="sku-code">{itemCode}</code>
+                          </div>
+                          <div className="sku-stock-stats">
+                            <small>Stock On Hand</small>
+                            <span className={`sku-stock-badge ${onHand > 0 ? 'is-instock' : 'is-out'}`}>
+                              {formatNumber(onHand)} units in stock
+                            </span>
+                          </div>
+                          <div className="sku-sales-stats">
+                            <strong className="sku-rev"><MoneyAmount value={salesAmt} /></strong>
+                            <small className="sku-sold">{formatNumber(unitsSold)} units sold</small>
+                          </div>
                         </div>
-                        <div className="sku-sales-stats">
-                          <strong><MoneyAmount value={sku.sales} /></strong>
-                          <small>{formatNumber(sku.units)} units</small>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="empty-drilldown-note">
                       No fast-moving item records attributed to this store yet.
@@ -463,7 +484,7 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
             </div>
           ) : (
             <div className="empty-drilldown-state">
-              Please select a warehouse from the left list.
+              Please select a warehouse from the strip above.
             </div>
           )}
         </div>

@@ -42,7 +42,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
     if (initialReportId) {
       setOpenedReportId(initialReportId);
       setActiveReportId(initialReportId);
-      setIsExecuted(false);
+      setIsExecuted(true);
       setVisibleCount(20);
     }
   }, [initialReportId]);
