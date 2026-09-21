@@ -1,0 +1,218 @@
+.app-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, #eef7ff 0, #f4f9fe 460px, #eef5fb 100%),
+    var(--color-bg);
+}
+
+/* Status Bar */
+.erp-status-bar {
+  background: #f0f7ff;
+  border-bottom: 1px solid #d4e7f8;
+  font-size: 0.82rem;
+  color: #1e3a5f;
+}
+
+.erp-status-bar.is-live {
+  background: #e8f9f0;
+  border-bottom-color: #b7e8cb;
+  color: #0d5e38;
+}
+
+.erp-status-bar.is-preview {
+  background: #fff8eb;
+  border-bottom-color: #f7dfb0;
+  color: #7a4600;
+}
+
+.erp-status-bar__inner {
+  width: min(100%, 1540px);
+  margin: 0 auto;
+  padding: 6px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.erp-status-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.erp-status-bar__info span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.erp-status-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sync-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.sync-btn--refresh {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.status-icon.live { color: #15803d; }
+.status-icon.preview { color: #b45309; }
+
+/* Top Navigation - Aligned with dashboard grid */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid #cde5fa;
+  background: rgba(246, 251, 255, 0.96);
+  box-shadow: 0 4px 18px rgba(18, 77, 145, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.topnav__inner {
+  width: min(100%, 1540px);
+  margin: 0 auto;
+  padding: 8px 26px;
+  display: grid;
+  grid-template-columns: 210px minmax(390px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+}
+
+.topnav__links {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.topnav__actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Dashboard Container */
+.dashboard-main {
+  width: min(100%, 1540px);
+  margin: 0 auto;
+  padding: 14px 26px 24px;
+}
+
+/* Dashboard Grids - Unified 3-column template for clean vertical alignment */
+.dashboard-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+  align-items: stretch;
+}
+
+.dashboard-grid--top,
+.dashboard-grid--bottom {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-grid > * {
+  min-width: 0;
+  height: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1280px) {
+  .topnav__inner {
+    grid-template-columns: 190px 1fr auto;
+    gap: 8px;
+    padding: 8px 18px;
+  }
+
+  .dashboard-main {
+    padding: 12px 18px 20px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .topnav__inner {
+    grid-template-columns: 180px 1fr;
+  }
+
+  .topnav__links {
+    order: 3;
+    grid-column: 1 / -1;
+    justify-content: start;
+    overflow-x: auto;
+    padding-bottom: 7px;
+  }
+
+  .topnav__actions {
+    gap: 8px;
+  }
+
+  .dashboard-grid--top,
+  .dashboard-grid--bottom {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dashboard-grid--top > :first-child,
+  .dashboard-grid--bottom > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .topnav__inner {
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .brand-logo strong {
+    font-size: 1.8rem;
+  }
+
+  .topnav__links,
+  .topnav__actions {
+    display: none;
+  }
+
+  .mobile-only {
+    display: inline-grid;
+  }
+
+  .dashboard-main {
+    padding: 10px 14px 18px;
+  }
+
+  .dashboard-grid--top,
+  .dashboard-grid--bottom {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid--top > :first-child,
+  .dashboard-grid--bottom > :first-child {
+    grid-column: auto;
+  }
+}

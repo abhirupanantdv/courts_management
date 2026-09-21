@@ -1,0 +1,21 @@
+{
+  "name": "courts-management-react",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "package:frappe": "vite build && node scripts/package-frappe.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.2",
+    "vite": "^7.1.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "lucide-react": "^0.542.0",
+    "recharts": "^3.1.2"
+  },
+  "devDependencies": {}
+}
