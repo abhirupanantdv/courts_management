@@ -96,6 +96,11 @@ fs.writeFileSync(path.join(frappeModuleDir, '__init__.py'), '__version__ = "1.0.
 fs.writeFileSync(path.join(frappeModuleDir, 'modules.txt'), "Courts Management\n", 'utf-8');
 fs.writeFileSync(path.join(frappeModuleDir, 'patches.txt'), "", 'utf-8');
 
+// Module-level __init__.py (required by Frappe sync_for to resolve __file__)
+const innerModuleDir = path.join(frappeModuleDir, 'courts_management');
+ensureDir(innerModuleDir);
+fs.writeFileSync(path.join(innerModuleDir, '__init__.py'), '# Courts Management module\n', 'utf-8');
+
 // 6. Frappe hooks.py
 const hooksPy = `app_name = "courts_management"
 app_title = "Courts Management"
