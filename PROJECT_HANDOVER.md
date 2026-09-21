@@ -336,4 +336,56 @@ All artificial multipliers and fallback constants have been permanently removed 
   6. **Stock Movement:** Navigates to Sales vs Stock Movement Run-Rate.
 - In `ReportsPage.jsx`, fixed `initialReportId` to set `isExecuted: true`, eliminating the blank unexecuted screen.
 
+---
 
+### 6. Comprehensive Responsive Design Architecture (Mobile, Tablet & Laptop)
+
+Implemented a robust, unified 3-tier responsive CSS design system in `frontend/src/styles/layout.css` and `frontend/src/styles/components.css`:
+
+#### A. Laptop & Desktop Screens (`>= 1025px`):
+- **Dashboard Grids:** 3-column unified grid layout (`repeat(3, minmax(0, 1fr))`) ensuring SalesChart, CategoryPerformanceCard, QuickActions, StorePerformance, StoreDetails, and WarehouseAnalysis stretch and align equally.
+- **Executive Overview:** 4-column cards grid (`repeat(4, minmax(0, 1fr))`).
+- **Management Overview:** 6-column KPI cards grid (`repeat(6, minmax(0, 1fr))`).
+- **Revenue Intelligence Leaderboard:**
+  - Warehouses: Responsive grid (`repeat(auto-fit, minmax(320px, 1fr))`).
+  - Best-selling Products: Responsive grid (`repeat(auto-fit, minmax(300px, 1fr))`).
+  - Store Drilldown: Full-width hero with 5-column metric tiles and 2-column SKU cards.
+- **Module Pages:** 2-column layout (`1fr 340px`) with primary table and detail sidebar.
+- **Quick Operations:** 3-column grid (`repeat(3, minmax(0, 1fr))`).
+- **Sales vs Inventory:** Cards grid (`repeat(auto-fit, minmax(360px, 1fr))`).
+
+#### B. Tablet Screens (`641px - 1024px`):
+- **Top Navigation:** Brand logo and action chips on top row; primary module navigation switches to a touch-optimized, smooth horizontal scrollable pill bar (`overflow-x: auto; -webkit-overflow-scrolling: touch`).
+- **Hero Banner:** Proportional aspect ratio (`1536 / 320`) with 150px min-height to maintain Courts branding visual fidelity.
+- **Dashboard Grids:** Balanced 2-column grid (`repeat(2, minmax(0, 1fr))`):
+  - Top grid: Sales Trend chart spans full width (2 columns); Category Revenue and Quick Operations sit side-by-side in 2 columns.
+  - Bottom grid: Store Performance and Store Drilldown sit side-by-side in 2 columns; Warehouse Analysis spans full width (2 columns).
+- **Executive Overview:** Balanced 2x2 grid (`repeat(2, minmax(0, 1fr))`).
+- **Management Overview:** Balanced 2x3 grid (`repeat(3, minmax(0, 1fr))`).
+- **Leaderboard:** 2-column warehouses and 2-column product cards. Drilldown hero metrics arranged in 3 columns.
+- **Module Pages:** Single-column content grid (`1fr`), stacking sidebars cleanly beneath primary tables. Module KPIs arranged in 2 columns.
+- **Modals & Overlays:** Adaptive modal width `width: min(90vw, 560px)`.
+
+#### C. Mobile Phone Screens (`<= 640px`):
+- **App Shell & Padding:** Compact touch-friendly padding (`padding: 8px 10px 20px;`).
+- **Mobile Header & Navigation:**
+  - Sticky 58px header with Courts brand logo, quick alert indicator, user avatar chip, and hamburger menu button (`.mobile-only`).
+  - Smooth floating mobile menu (`.mobile-nav-panel`) positioned directly below header with tap-friendly 42px touch buttons.
+- **Hero Banner:** Dedicated mobile aspect ratio (`16 / 7; min-height: 125px; object-fit: cover; object-position: center; border-radius: 10px;`) preventing the Courts reference banner from collapsing into an unreadable ribbon. Compact live status pill (`font-size: 0.64rem; padding: 3px 8px;`).
+- **Overview Cards:** Single-column list (`grid-template-columns: 1fr`) with 52px icon, 1.25rem values, and quick action refresh buttons. Prevents large PGK figures (e.g. `PGK 1,420,500.00`) from clipping or awkward wrapping.
+- **Management Overview:** Ergonomic 2x3 grid (`repeat(2, minmax(0, 1fr)); gap: 8px;`) with 120px min-height, 36px icons, and clean truncated descriptions. Decorative background blur removed to avoid text collisions.
+- **Revenue Intelligence Leaderboard:**
+  - Header: Vertical stack with centered flame badge and compact 1.2rem title.
+  - Tab Switcher: Full-width horizontal touch-scrolling bar (`overflow-x: auto; scrollbar-width: none`) with 3 touch buttons (Top Warehouses, Top Selling Products, Store Drilldown).
+  - Search & Sorting: Full-width search input and 100% segmented sort pills.
+  - Cards: Single-column full-width warehouse and product cards with touch-friendly 14px padding.
+  - Store Drilldown: Horizontal touch-scrolling warehouse selector strip (`.strip-pills-row`); 2x2 hero metric tiles; single-column SKU cards with separate stock badges and sales figures.
+- **Dashboard Panels (Top & Bottom):** Single-column stack (`1fr; gap: 12px;`):
+  - Category Revenue: Vertical label-to-value wrap preventing long group names from crowding currency amounts.
+  - Quick Operations: 2-column grid (`repeat(2, minmax(0, 1fr)); gap: 8px;`) with 68px touch buttons.
+  - Store Details: Horizontal scrollable tab buttons; 2x2 mini-stats (`repeat(2, minmax(0, 1fr))`); single-column sales horizon and inventory bar.
+  - Warehouse Analysis: 3-column compact mini-grid (`repeat(3, minmax(0, 1fr)); font-size: 0.6rem;`).
+- **Sales vs Inventory Page:** Single-column warehouse cards (`1fr`); 2-column card metrics banner (`repeat(2, 1fr)`) preventing metric overcrowding.
+- **Module Pages & Reports:** Vertically stacked header and action buttons; full-width toolbar with touch-friendly search and select filters; horizontal touch-scrolling report selector tabs (`.reports-catalog-bar`); 2-column report KPI tiles.
+- **Universal Touch Tables:** All tabular interfaces wrapped in `.table-scroll` with `overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;` allowing smooth native gesture scrolling without causing page-level horizontal blowout.
+- **Login & ERP Modals:** Edge-to-edge modal layout with `width: 100%; max-height: 92vh; border-radius: 12px;` on small viewports.
