@@ -8,6 +8,4 @@ version = "1.0.0"
 description = "Courts Management Command Centre for Frappe / ERPNext"
 readme = "README.md"
 authors = [{ name = "Courts Team", email = "admin@courts.com" }]
-dependencies = [
-    "frappe"
-]
+dependencies = []

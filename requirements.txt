@@ -1,1 +1,1 @@
-frappe
+# Frappe custom app dependencies

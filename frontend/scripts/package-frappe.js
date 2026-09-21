@@ -58,7 +58,7 @@ copyRecursive(distDir, frappePublicCourtsDir);
 const setupPy = `from setuptools import setup, find_packages
 
 with open("requirements.txt") as f:
-    install_requires = f.read().strip().split("\\n")
+    install_requires = [line.strip() for line in f.read().splitlines() if line.strip() and not line.startswith("#")]
 
 setup(
     name="courts_management",
@@ -84,13 +84,11 @@ version = "1.0.0"
 description = "Courts Management Command Centre for Frappe / ERPNext"
 readme = "README.md"
 authors = [{ name = "Courts Team", email = "admin@courts.com" }]
-dependencies = [
-    "frappe"
-]
+dependencies = []
 `;
 fs.writeFileSync(path.join(frappeAppRoot, 'pyproject.toml'), pyprojectToml, 'utf-8');
 
-fs.writeFileSync(path.join(frappeAppRoot, 'requirements.txt'), "frappe\n", 'utf-8');
+fs.writeFileSync(path.join(frappeAppRoot, 'requirements.txt'), "# Frappe custom app dependencies\n", 'utf-8');
 fs.writeFileSync(path.join(frappeAppRoot, 'license.txt'), "MIT\n", 'utf-8');
 
 // 5. Frappe App __init__.py & modules.txt
