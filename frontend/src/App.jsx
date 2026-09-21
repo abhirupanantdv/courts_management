@@ -4,7 +4,6 @@ import { CommandCentre } from './components/commandCentre/CommandCentre.jsx';
 import { LoginRequired } from './components/auth/LoginRequired.jsx';
 import { getErpNextDashboardData } from './api/dashboardApi.js';
 import { getLoggedInUser, loginToErpNext, logoutFromErpNext } from './api/erpnextClient.js';
-import { getCourtsLiveErpSnapshotDashboard } from './data/courtsLiveErpSnapshot.js';
 
 export default function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -18,8 +17,9 @@ export default function App() {
     error: '',
   });
 
+  // Verify session on initial load
   useEffect(() => {
-    async function initializeDashboard() {
+    async function checkSession() {
       try {
         const user = await getLoggedInUser();
         if (user && user !== 'Guest') {
@@ -34,7 +34,22 @@ export default function App() {
       }
     }
 
-    initializeDashboard();
+    checkSession();
+  }, []);
+
+  // Listen for session expiry from API calls
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setDashboardData(null);
+      setAuth({
+        status: 'guest',
+        user: null,
+        error: 'Your session has expired. Please sign in again.',
+      });
+    };
+
+    window.addEventListener('courts:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('courts:session-expired', handleSessionExpired);
   }, []);
 
   const handleRefresh = async () => {
@@ -49,12 +64,15 @@ export default function App() {
           setAuth({ status: 'authenticated', user, error: '' });
           const nextData = await getErpNextDashboardData();
           setDashboardData(nextData);
+        } else {
+          setAuth({ status: 'guest', user: null, error: 'Please sign in to view data.' });
         }
       }
     } catch (error) {
       setAuth((current) => ({ ...current, error: error.message }));
+    } finally {
+      window.setTimeout(() => setIsRefreshing(false), 500);
     }
-    window.setTimeout(() => setIsRefreshing(false), 500);
   };
 
   const handleLogin = async (credentials) => {
@@ -66,47 +84,26 @@ export default function App() {
       const erpData = await getErpNextDashboardData();
       setDashboardData(erpData);
     } catch (error) {
-      const errMsg = error.message || '';
-      const isUnreachable =
-        errMsg.includes('reach') ||
-        errMsg.includes('fetch') ||
-        errMsg.includes('aborted') ||
-        errMsg.includes('timeout') ||
-        errMsg.includes('Failed to fetch') ||
-        errMsg.includes('502');
-
-      if (isUnreachable && credentials.username) {
-        console.warn('[Courts Command] ERPNext host unreachable. Initializing live ERP snapshot for:', credentials.username);
-        const snapshot = getCourtsLiveErpSnapshotDashboard();
-        setAuth({
-          status: 'authenticated',
-          user: `${credentials.username}`,
-          error: '',
-          isOfflineSnapshot: true,
-        });
-        setDashboardData(snapshot);
-        setIsLoginOpen(false);
-        return;
+      let errMsg = error.message || 'Login failed';
+      if (
+        errMsg.includes('Invalid') ||
+        errMsg.includes('Incorrect') ||
+        errMsg.includes('Password') ||
+        errMsg.includes('usr') ||
+        errMsg.includes('401')
+      ) {
+        errMsg = 'Invalid username or password.';
       }
-      setAuth({ status: 'guest', user: null, error: errMsg || 'Login failed' });
+      setAuth({ status: 'guest', user: null, error: errMsg });
     }
   };
 
-  const handleEnterPreview = () => {
-    const snapshot = getCourtsLiveErpSnapshotDashboard();
-    setAuth({
-      status: 'authenticated',
-      user: 'Preview User',
-      error: '',
-      isOfflineSnapshot: true,
-    });
-    setDashboardData(snapshot);
-  };
-
   const handleLogout = async () => {
-    setAuth((current) => ({ ...current, status: 'loading', error: '' }));
+    setAuth({ status: 'loading', user: null, error: '' });
     try {
       await logoutFromErpNext();
+    } catch (err) {
+      console.warn('Logout error:', err);
     } finally {
       setDashboardData(null);
       setAuth({ status: 'guest', user: null, error: '' });
@@ -121,14 +118,13 @@ export default function App() {
 
   const isAuthenticated = auth.status === 'authenticated' && dashboardData !== null;
 
-  // Strict Login Gate: Do not render demo or dashboard without authenticated live ERPNext session
+  // Render clean login screen if not authenticated
   if (!isAuthenticated) {
     return (
       <div className="app-shell">
         <LoginRequired
           auth={auth}
           onLogin={handleLogin}
-          onEnterPreview={handleEnterPreview}
         />
       </div>
     );

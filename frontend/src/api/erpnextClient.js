@@ -18,7 +18,7 @@ function getCsrfToken() {
   return null;
 }
 
-async function request(path, options = {}) {
+export async function request(path, options = {}) {
   const { timeoutMs = 6000, ...fetchOptions } = options;
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -40,6 +40,12 @@ async function request(path, options = {}) {
     const payload = contentType.includes('application/json') ? await response.json() : await response.text();
 
     if (!response.ok) {
+      if ((response.status === 401 || response.status === 403) && path !== '/api/method/login') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('courts:session-expired'));
+        }
+      }
+
       let message = payload?.message || payload?.error || payload?._server_messages || payload?.exc || response.statusText;
       if (payload?._server_messages) {
         try {
@@ -63,8 +69,8 @@ async function request(path, options = {}) {
 
 export async function loginToErpNext({ username, password }) {
   const body = new URLSearchParams();
-  body.set('usr', username);
-  body.set('pwd', password);
+  body.set('usr', String(username || '').trim());
+  body.set('pwd', String(password || ''));
 
   const payload = await request('/api/method/login', {
     method: 'POST',
@@ -75,8 +81,12 @@ export async function loginToErpNext({ username, password }) {
   });
 
   const user = await getLoggedInUser();
+  if (!user || user === 'Guest') {
+    throw new Error('Invalid login credentials. Please check your username and password.');
+  }
+
   return {
-    message: payload.message,
+    message: payload?.message,
     user,
   };
 }

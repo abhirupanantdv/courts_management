@@ -1,3 +1,5 @@
+const HERO_IMAGE_URL = '/assets/courts_management/courts/assets/courts-reference-hero.jpg';
+
 export function Hero({ data = {}, onNavigate }) {
   const isErpLive = data?.source?.type === 'erpnext';
   const stores = data?.heroMetrics?.stores ?? 0;
@@ -10,9 +12,18 @@ export function Hero({ data = {}, onNavigate }) {
     <section className="hero-courts-banner" aria-label="Courts Stronger Together Command Centre">
       <div className="hero-courts-banner__container">
         <img
-          src="/assets/courts-reference-hero.jpg"
+          src={HERO_IMAGE_URL}
           alt="Courts Stronger Together - Stores, Warehouses, People, Performance - Better Homes, Brighter Lives"
           className="hero-courts-banner__img"
+          onError={(e) => {
+            if (!e.currentTarget.dataset.fallback) {
+              e.currentTarget.dataset.fallback = '1';
+              e.currentTarget.src = '/assets/courts-reference-hero.jpg';
+            } else if (e.currentTarget.dataset.fallback === '1') {
+              e.currentTarget.dataset.fallback = '2';
+              e.currentTarget.src = './assets/courts-reference-hero.jpg';
+            }
+          }}
         />
 
         {/* Live system sync status pill */}

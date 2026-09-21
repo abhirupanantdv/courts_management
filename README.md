@@ -12,10 +12,9 @@ bench build --app courts_management
 bench restart
 ```
 
-## Direct Routes after Installation:
+## Direct Route after Installation:
 - **Standalone Command Centre:** `http://<your-server-ip-or-dns>/courts`
-- **Frappe Desk Page:** `http://<your-server-ip-or-dns>/app/courts-dashboard`
 
 ## Features:
-- **Automatic IP/DNS detection:** Dynamically reads `window.location.origin` - zero IP configuration needed.
-- **CSRF & Cookie Authentication:** Automatically inherits active session from Frappe.
+- **Dynamic origin detection:** Dynamically reads `window.location.origin` from the browser.
+- **Session-Based Authentication:** Standard secure session cookie authentication.

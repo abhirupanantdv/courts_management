@@ -34,14 +34,16 @@ When installed on a Frappe / ERPNext server, **no manual IP or DNS configuration
 
 ---
 
-## 3. Application Routes After Installation
+## 3. Application Route After Installation
 
-Once installed on your server, the app is available via two distinct routes:
+Once installed on your server, the dashboard is accessed via the standalone portal route:
 
 | Route | Type | Description |
 |---|---|---|
-| `http://<server-ip-or-domain>/courts` | **Standalone Web Portal** | Full-screen command centre optimized for wall displays, executive tablets, and operational stations without ERPNext sidebar overhead. |
-| `http://<server-ip-or-domain>/app/courts-dashboard` | **Desk Page** | Native ERPNext Desk page embedded inside the Desk layout with search bar and workspace navigation. |
+| `http://<server-ip-or-domain>/courts` | **Standalone Web Portal** | Full-screen command centre optimized for wall displays, executive stations, tablets, and store managers without ERPNext sidebar overhead. |
+
+> [!NOTE]
+> The Desk Page (`/app/courts-dashboard`) was intentionally removed to keep ERPNext Desk clean and unencumbered.
 
 ---
 
@@ -49,95 +51,83 @@ Once installed on your server, the app is available via two distinct routes:
 
 The Frappe app is located in the repository at:
 ```
-courts_management/
-├── pyproject.toml
-├── setup.py
-├── requirements.txt
-├── README.md
-├── license.txt
-└── courts_management/
-    ├── __init__.py
-    ├── hooks.py
-    ├── modules.txt
-    ├── patches.txt
-    ├── public/
-    │   └── courts/                     <-- Compiled production bundle (JS, CSS, assets)
-    │       ├── index.html
-    │       └── assets/
-    ├── www/
-    │   ├── courts.py                   <-- Portal route controller (disables cache, injects CSRF)
-    │   └── courts.html                 <-- Portal entry template for /courts
-    └── courts_management/
-        └── page/
-            └── courts_dashboard/       <-- Frappe Desk Page (/app/courts-dashboard)
-                ├── courts_dashboard.json
-                ├── courts_dashboard.js
-                └── courts_dashboard.css
+courts_management/ (Repository Root)
+├── setup.py                        <-- Standard setuptools package installer
+├── pyproject.toml                  <-- PEP 621 package metadata
+├── requirements.txt                <-- Python dependencies
+├── package.json                    <-- Root npm build scripts
+├── README.md                       <-- App overview
+├── license.txt                     <-- MIT license
+│
+├── courts_management/              <-- Python Frappe package directory
+│   ├── __init__.py
+│   ├── hooks.py                    <-- App hooks & route rules (/courts)
+│   ├── modules.txt
+│   ├── patches.txt
+│   ├── api.py                      <-- High-performance server-side Python API (get_dashboard_data)
+│   ├── public/
+│   │   └── courts/                 <-- Pre-compiled production bundle (JS, CSS, assets)
+│   │       ├── index.html
+│   │       └── assets/
+│   └── www/
+│       ├── courts.py               <-- Portal route controller (disables cache, injects CSRF)
+│       └── courts.html             <-- Portal entry template for /courts
+│
+└── frontend/                       <-- React 19 + Vite Frontend Source Code
+    ├── package.json
+    ├── vite.config.js
+    └── src/
 ```
 
 ---
 
 ## 5. Step-by-Step Installation on ERPNext Server
 
-Follow these steps on your Frappe / ERPNext bench server (Ubuntu / Debian / Docker):
+Follow these steps on your Frappe / ERPNext bench server:
 
-### Step 1: Transfer the `courts_management` App to the Server
-Copy the `courts_management` directory to your bench `apps` folder, or clone it if hosted on Git:
+> [!IMPORTANT]
+> If a previous `bench get-app` attempt failed, first remove any partial folder:
+> ```bash
+> cd ~/courts-frappe  # or your bench directory
+> rm -rf apps/courts_management
+> ```
 
+### Step 1: Clone the App via Bench
 ```bash
-# Example if cloning via Git:
-cd ~/frappe-bench
-bench get-app https://github.com/your-org/courts_management.git
-
-# OR if copying manually via SCP / rsync:
-# scp -r courts_management frappe@your-server:~/frappe-bench/apps/
+cd ~/courts-frappe
+bench get-app https://github.com/abhirupanantdv/courts_management.git
 ```
 
-### Step 2: Install the App on your Bench Environment
-If copied manually into `apps/courts_management`:
+### Step 2: Install the App onto your Target Site
+Replace `[your-site-name]` with your actual site name (e.g. `courts.anantdv.com`):
 ```bash
-cd ~/frappe-bench
-bench pip install -e apps/courts_management
+bench --site [your-site-name] install-app courts_management
 ```
 
-### Step 3: Install the App onto your Target Site
-Replace `site1.local` with your site name:
+### Step 3: Run Migrations and Build Assets
 ```bash
-bench --site site1.local install-app courts_management
-```
-
-### Step 4: Run Migrations and Build Assets
-```bash
-bench --site site1.local migrate
+bench --site [your-site-name] migrate
 bench build --app courts_management
-bench --site site1.local clear-cache
+bench --site [your-site-name] clear-cache
 ```
 
-### Step 5: Restart Bench Services
+### Step 4: Restart Web Workers
 ```bash
-# If running production with Supervisor & NGINX:
-sudo supervisorctl restart all
-sudo systemctl reload nginx
-
-# If running local bench development server:
-bench restart
+# Reload gunicorn to pick up the Python API (courts_management/api.py):
+ps -ef | grep "/env/bin/gunicorn" | grep -v grep | head -n 1 | awk '{print $2}' | xargs kill
 ```
 
 ---
 
 ## 6. Verifying the Installation
 
-1. Open your browser and navigate to:
-   ```
-   http://<your-server-ip-or-domain>/courts
-   ```
-   *The Courts Management Command Centre will load immediately, detect the server origin, authenticate your session, and pull live ledger, inventory, and sales data.*
+Open your browser and navigate to:
+```
+http://<your-server-ip-or-domain>/courts
+```
+*(Example: `http://courts.anantdv.com/courts`)*
 
-2. Alternatively, log into ERPNext Desk and go to:
-   ```
-   http://<your-server-ip-or-domain>/app/courts-dashboard
-   ```
-   Or type **Courts Command Centre** into the ERPNext Awesomebar search (Ctrl + K / Cmd + K).
+*The Courts Management Command Centre will load, check your session, and pull live database analytics from `courts_management.api.get_dashboard_data`.*
 
 ---
 

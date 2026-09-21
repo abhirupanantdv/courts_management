@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { erpNextRoutes, redirectToErpNext } from '../../utils/erpnextRoutes.js';
-import { ERPNEXT_HOST, ERPNEXT_URL } from '../../config/erpConfig.js';
 
 const nav = [
   { label: 'Dashboard', icon: Home, page: 'dashboard' },
@@ -42,8 +41,6 @@ export function Header({
   const setIsLoginOpen = onToggleLogin || setInternalLoginOpen;
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
 
   const isAuthenticated = auth?.status === 'authenticated';
   const isLoading = auth?.status === 'loading';
@@ -53,11 +50,6 @@ export function Header({
   const weekday = today.toLocaleDateString('en-GB', { weekday: 'long' });
 
   const notificationsCount = data?.notifications ?? (data?.source?.warnings?.length || 0);
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    onLogin({ username, password });
-  };
 
   return (
     <header className="topnav">
@@ -116,15 +108,9 @@ export function Header({
             </button>
 
             {isLoginOpen ? (
-              <LoginDropdown
+              <UserProfileDropdown
                 auth={auth}
-                isAuthenticated={isAuthenticated}
                 isLoading={isLoading}
-                username={username}
-                password={password}
-                onUsernameChange={setUsername}
-                onPasswordChange={setPassword}
-                onSubmit={handleSubmit}
                 onLogout={onLogout}
               />
             ) : null}
@@ -159,25 +145,19 @@ export function Header({
           </button>
           <button onClick={() => {
             setIsMobileMenuOpen(false);
-            setIsLoginOpen(true);
+            onLogout();
           }}>
-            <LogIn size={19} />
-            System Login
+            <LogOut size={19} />
+            Sign Out
           </button>
         </div>
       ) : null}
 
       {isLoginOpen ? (
-        <LoginDropdown
+        <UserProfileDropdown
           auth={auth}
           className="login-dropdown--mobile"
-          isAuthenticated={isAuthenticated}
           isLoading={isLoading}
-          username={username}
-          password={password}
-          onUsernameChange={setUsername}
-          onPasswordChange={setPassword}
-          onSubmit={handleSubmit}
           onLogout={onLogout}
         />
       ) : null}
@@ -185,63 +165,26 @@ export function Header({
   );
 }
 
-function LoginDropdown({
+function UserProfileDropdown({
   auth,
   className = '',
-  isAuthenticated,
   isLoading,
-  username,
-  password,
-  onUsernameChange,
-  onPasswordChange,
-  onSubmit,
   onLogout,
 }) {
   return (
     <div className={`login-dropdown ${className}`}>
       <div className="login-dropdown__header">
-        <strong>Courts Server Login</strong>
-        <span>{ERPNEXT_HOST}</span>
+        <strong>Courts Dashboard</strong>
+        <span>Active Session</span>
       </div>
 
-      {isAuthenticated ? (
-        <div className="login-status">
-          <p>Logged in as <strong>{auth.user}</strong></p>
-          <button className="login-submit" onClick={onLogout} disabled={isLoading}>
-            <LogOut size={16} />
-            Logout
-          </button>
-        </div>
-      ) : (
-        <form onSubmit={onSubmit}>
-          <label>
-            Username or Email
-            <input
-              autoComplete="username"
-              value={username}
-              onChange={(event) => onUsernameChange(event.target.value)}
-              placeholder="user@company.com"
-              required
-            />
-          </label>
-          <label>
-            Password
-            <input
-              autoComplete="current-password"
-              type="password"
-              value={password}
-              onChange={(event) => onPasswordChange(event.target.value)}
-              placeholder="Account password"
-              required
-            />
-          </label>
-          {auth.error ? <p className="login-error">{auth.error}</p> : null}
-          <button className="login-submit" type="submit" disabled={isLoading}>
-            <LogIn size={16} />
-            {isLoading ? 'Connecting...' : 'Login & Sync'}
-          </button>
-        </form>
-      )}
+      <div className="login-status">
+        <p>Signed in as <strong>{auth?.user}</strong></p>
+        <button className="login-submit" onClick={onLogout} disabled={isLoading}>
+          <LogOut size={16} />
+          {isLoading ? 'Signing out...' : 'Sign Out'}
+        </button>
+      </div>
     </div>
   );
 }

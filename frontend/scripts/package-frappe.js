@@ -11,8 +11,6 @@ const frappeAppRoot = path.resolve(projectRoot, '..'); // Repository root (where
 const frappeModuleDir = path.join(frappeAppRoot, 'courts_management');
 const frappePublicCourtsDir = path.join(frappeModuleDir, 'public', 'courts');
 const frappeWwwDir = path.join(frappeModuleDir, 'www');
-const frappePageDir = path.join(frappeModuleDir, 'page', 'courts_dashboard');
-const frappeModulePageDir = path.join(frappeModuleDir, 'courts_management', 'page', 'courts_dashboard');
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -47,12 +45,28 @@ ensureDir(frappeAppRoot);
 ensureDir(frappeModuleDir);
 ensureDir(frappePublicCourtsDir);
 ensureDir(frappeWwwDir);
-ensureDir(frappePageDir);
-ensureDir(frappeModulePageDir);
+
+// Remove any existing desk page directories if present
+const frappePageDir = path.join(frappeModuleDir, 'page');
+const frappeModulePageDir = path.join(frappeModuleDir, 'courts_management', 'page');
+if (fs.existsSync(frappePageDir)) fs.rmSync(frappePageDir, { recursive: true, force: true });
+if (fs.existsSync(frappeModulePageDir)) fs.rmSync(frappeModulePageDir, { recursive: true, force: true });
 
 // 3. Copy compiled dist into public/courts
 console.log('Copying dist/ -> courts_management/public/courts/ ...');
 copyRecursive(distDir, frappePublicCourtsDir);
+
+// Also copy hero banner image to public/ for multiple route accessibility
+const heroImgSrc = path.join(distDir, 'assets', 'courts-reference-hero.jpg');
+if (fs.existsSync(heroImgSrc)) {
+  fs.copyFileSync(heroImgSrc, path.join(frappeModuleDir, 'public', 'courts-reference-hero.jpg'));
+  const benchSitesAssets = path.resolve(frappeAppRoot, '..', '..', 'sites', 'assets');
+  if (fs.existsSync(benchSitesAssets)) {
+    try {
+      fs.copyFileSync(heroImgSrc, path.join(benchSitesAssets, 'courts-reference-hero.jpg'));
+    } catch {}
+  }
+}
 
 // 4. Create setup.py & pyproject.toml at repository root
 const setupPy = `from setuptools import setup, find_packages
@@ -179,64 +193,7 @@ const wwwCourtsHtml = `<!doctype html>
 `;
 fs.writeFileSync(path.join(frappeWwwDir, 'courts.html'), wwwCourtsHtml, 'utf-8');
 
-// 9. Create Desk Page: courts_dashboard
-const deskPageJson = {
-  "content": null,
-  "creation": "2026-09-20 12:00:00.000000",
-  "docstatus": 0,
-  "doctype": "Page",
-  "idx": 0,
-  "modified": "2026-09-20 12:00:00.000000",
-  "modified_by": "Administrator",
-  "module": "Courts Management",
-  "name": "courts-dashboard",
-  "owner": "Administrator",
-  "page_name": "courts-dashboard",
-  "roles": [
-    { "role": "System Manager" },
-    { "role": "Accounts Manager" },
-    { "role": "Stock Manager" },
-    { "role": "Sales Manager" }
-  ],
-  "standard": "Yes",
-  "system_page": 0,
-  "title": "Courts Command Centre"
-};
-
-const deskPageJs = `frappe.pages['courts-dashboard'].on_page_load = function(wrapper) {
-  var page = frappe.ui.make_app_page({
-    parent: wrapper,
-    title: 'Courts Command Centre',
-    single_column: true
-  });
-
-  // Render seamless full-height interactive iframe pointing to /courts
-  var $container = $(wrapper).find('.layout-main-section');
-  $container.empty();
-  
-  var $iframe = $('<iframe>', {
-    src: '/courts',
-    style: 'width: 100%; height: calc(100vh - 95px); min-height: 850px; border: none; display: block; border-radius: 8px;'
-  });
-
-  $container.append($iframe);
-};
-`;
-
-const deskPageCss = `.layout-main-section {
-  padding: 0 !important;
-}
-`;
-
-// Write Desk Page to both locations for full Frappe compatibility
-for (const dir of [frappePageDir, frappeModulePageDir]) {
-  ensureDir(dir);
-  fs.writeFileSync(path.join(dir, 'courts_dashboard.json'), JSON.stringify(deskPageJson, null, 2), 'utf-8');
-  fs.writeFileSync(path.join(dir, 'courts_dashboard.js'), deskPageJs, 'utf-8');
-  fs.writeFileSync(path.join(dir, 'courts_dashboard.css'), deskPageCss, 'utf-8');
-}
-
-// 10. Write README.md at Frappe app repository root
+// 9. Write README.md at Frappe app repository root
 const readmeMd = `# Courts Management - Frappe / ERPNext App
 
 Modern, real-time enterprise command centre, POS register, stock ledger, sales intelligence, and financial analytics dashboard.
@@ -251,17 +208,15 @@ bench build --app courts_management
 bench restart
 \`\`\`
 
-## Direct Routes after Installation:
+## Direct Route after Installation:
 - **Standalone Command Centre:** \`http://<your-server-ip-or-dns>/courts\`
-- **Frappe Desk Page:** \`http://<your-server-ip-or-dns>/app/courts-dashboard\`
 
 ## Features:
-- **Automatic IP/DNS detection:** Dynamically reads \`window.location.origin\` - zero IP configuration needed.
-- **CSRF & Cookie Authentication:** Automatically inherits active session from Frappe.
+- **Dynamic origin detection:** Dynamically reads \`window.location.origin\` from the browser.
+- **Session-Based Authentication:** Standard secure session cookie authentication.
 `;
 fs.writeFileSync(path.join(frappeAppRoot, 'README.md'), readmeMd, 'utf-8');
 
 console.log('✓ Successfully created installable Frappe app at root: ' + frappeAppRoot);
 console.log('✓ Public assets synced: ' + frappePublicCourtsDir);
 console.log('✓ Web Portal route created: /courts (courts_management/www/courts.html)');
-console.log('✓ Desk Page route created: /app/courts-dashboard');

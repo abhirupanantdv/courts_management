@@ -8,13 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function normalizeUrl(input) {
   let url = String(input || '').trim().replace(/\/+$/, '');
-  if (!url) return 'http://192.168.101.125:8080';
+  if (!url) return 'http://127.0.0.1:8000';
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     url = url.includes(':443') ? `https://${url}` : `http://${url}`;
-  }
-  // If user put https:// on local IP with port 8080/8000, normalize to http://
-  if (/^https:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.0\.0\.1|localhost):8080/i.test(url)) {
-    url = url.replace(/^https:/i, 'http:');
   }
   return url;
 }
@@ -34,7 +30,7 @@ function getTargetUrl() {
   } catch (e) {
     console.warn('[Vite Proxy] Failed to read erpnext.config.json:', e.message);
   }
-  return 'http://192.168.101.125:8080';
+  return 'http://127.0.0.1:8000';
 }
 
 export default defineConfig({
