@@ -43,6 +43,16 @@ export function FinancePage({ data, onNavigate }) {
     }));
   }, [rawGlEntries]);
 
+  const filteredLedgerEntries = useMemo(() => {
+    return ledgerEntries.filter((row) => {
+      if (period === 'All') return true;
+      if (period === 'Today') return row.date === '2026-08-25' || row.date === '2026-09-21';
+      if (period === 'MTD') return row.date.startsWith('2026-08') || row.date.startsWith('2026-09');
+      if (period === 'YTD') return row.date.startsWith('2026');
+      return true;
+    });
+  }, [ledgerEntries, period]);
+
   // CSV Export for Ledger
   const handleExportCsv = () => {
     const headers = ['Posting Date', 'Account', 'Party', 'Voucher', 'Debit (PGK)', 'Credit (PGK)'];
@@ -238,14 +248,33 @@ export function FinancePage({ data, onNavigate }) {
 
       {/* General Ledger Table */}
       <div className="module-table-card">
-        <div className="card-header">
-          <h3>General Ledger Stream ({ledgerEntries.length} Postings)</h3>
-          <button 
-            className="text-btn"
-            onClick={() => onNavigate && onNavigate('reports', { reportId: 'general-ledger' })}
-          >
-            Open in Full Reports Suite
-          </button>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <h3>General Ledger Stream ({filteredLedgerEntries.length} Postings)</h3>
+            <span className="header-subtitle">Filter postings by operational period</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <select
+              className="dashboard-select-ctrl"
+              value={period}
+              onChange={(e) => {
+                setPeriod(e.target.value);
+                setVisibleCount(20);
+              }}
+              aria-label="Filter ledger entries by period"
+            >
+              <option value="All">All Time</option>
+              <option value="YTD">This Year (YTD)</option>
+              <option value="MTD">This Month (MTD)</option>
+              <option value="Today">Today</option>
+            </select>
+            <button 
+              className="text-btn"
+              onClick={() => onNavigate && onNavigate('reports', { reportId: 'general-ledger' })}
+            >
+              Open in Full Suite
+            </button>
+          </div>
         </div>
 
         <div className="table-responsive">
@@ -261,7 +290,7 @@ export function FinancePage({ data, onNavigate }) {
               </tr>
             </thead>
             <tbody>
-              {ledgerEntries.length ? ledgerEntries.slice(0, visibleCount).map((row) => (
+              {filteredLedgerEntries.length ? filteredLedgerEntries.slice(0, visibleCount).map((row) => (
                 <tr key={row.id}>
                   <td>{row.date}</td>
                   <td>

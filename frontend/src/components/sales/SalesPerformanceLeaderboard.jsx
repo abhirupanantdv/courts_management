@@ -21,6 +21,7 @@ import { formatNumber } from '../../utils/formatters.js';
 
 export function SalesPerformanceLeaderboard({ data, onNavigate }) {
   const [activeTab, setActiveTab] = useState('warehouses'); // 'warehouses' | 'items' | 'drilldown'
+  const [period, setPeriod] = useState('all'); // 'all' | 'ytd' | 'mtd' | 'today'
   const [sortBy, setSortBy] = useState('revenue'); // 'revenue' | 'units'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(
@@ -32,6 +33,35 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
     (i) => i.code && i.code !== 'Unknown' && i.name !== 'Unknown'
   );
 
+  // Helper for period revenue & units
+  const getWhRevenue = (wh) => {
+    if (period === 'today') return Number(wh.revenueToday ?? wh.revenue ?? 0);
+    if (period === 'mtd') return Number(wh.revenueMTD ?? wh.revenue ?? 0);
+    if (period === 'ytd') return Number(wh.revenueYTD ?? wh.revenue ?? 0);
+    return Number(wh.revenue || 0);
+  };
+
+  const getWhUnits = (wh) => {
+    if (period === 'today') return Number(wh.unitsSoldToday ?? wh.unitsSold ?? 0);
+    if (period === 'mtd') return Number(wh.unitsSoldMTD ?? wh.unitsSold ?? 0);
+    if (period === 'ytd') return Number(wh.unitsSoldYTD ?? wh.unitsSold ?? 0);
+    return Number(wh.unitsSold || 0);
+  };
+
+  const getItemRevenue = (item) => {
+    if (period === 'today') return Number(item.revenueToday ?? item.revenue ?? 0);
+    if (period === 'mtd') return Number(item.revenueMTD ?? item.revenue ?? 0);
+    if (period === 'ytd') return Number(item.revenueYTD ?? item.revenue ?? 0);
+    return Number(item.revenue || 0);
+  };
+
+  const getItemUnits = (item) => {
+    if (period === 'today') return Number(item.unitsSoldToday ?? item.unitsSold ?? 0);
+    if (period === 'mtd') return Number(item.unitsSoldMTD ?? item.unitsSold ?? 0);
+    if (period === 'ytd') return Number(item.unitsSoldYTD ?? item.unitsSold ?? 0);
+    return Number(item.unitsSold || 0);
+  };
+
   // Filtered & Sorted Warehouses
   const warehouses = useMemo(() => {
     let list = rawWarehouses.filter((wh) =>
@@ -40,12 +70,12 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
       (wh.location || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     if (sortBy === 'units') {
-      list = [...list].sort((a, b) => b.unitsSold - a.unitsSold);
+      list = [...list].sort((a, b) => getWhUnits(b) - getWhUnits(a));
     } else {
-      list = [...list].sort((a, b) => b.revenue - a.revenue);
+      list = [...list].sort((a, b) => getWhRevenue(b) - getWhRevenue(a));
     }
     return list;
-  }, [rawWarehouses, searchQuery, sortBy]);
+  }, [rawWarehouses, searchQuery, sortBy, period]);
 
   // Filtered & Sorted Products
   const items = useMemo(() => {
@@ -55,12 +85,12 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
       (item.group || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     if (sortBy === 'units') {
-      list = [...list].sort((a, b) => b.unitsSold - a.unitsSold);
+      list = [...list].sort((a, b) => getItemUnits(b) - getItemUnits(a));
     } else {
-      list = [...list].sort((a, b) => b.revenue - a.revenue);
+      list = [...list].sort((a, b) => getItemRevenue(b) - getItemRevenue(a));
     }
     return list;
-  }, [rawItems, searchQuery, sortBy]);
+  }, [rawItems, searchQuery, sortBy, period]);
 
   // Selected Warehouse for Drilldown
   const activeDrilldownWarehouse = useMemo(() => {
@@ -146,6 +176,40 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
           )}
         </div>
 
+        <div className="leaderboard-filter-group">
+          <span className="sort-label">Period:</span>
+          <div className="sort-segmented-control">
+            <button
+              type="button"
+              className={`sort-pill ${period === 'all' ? 'is-active' : ''}`}
+              onClick={() => setPeriod('all')}
+            >
+              <span>All Time</span>
+            </button>
+            <button
+              type="button"
+              className={`sort-pill ${period === 'ytd' ? 'is-active' : ''}`}
+              onClick={() => setPeriod('ytd')}
+            >
+              <span>YTD</span>
+            </button>
+            <button
+              type="button"
+              className={`sort-pill ${period === 'mtd' ? 'is-active' : ''}`}
+              onClick={() => setPeriod('mtd')}
+            >
+              <span>MTD</span>
+            </button>
+            <button
+              type="button"
+              className={`sort-pill ${period === 'today' ? 'is-active' : ''}`}
+              onClick={() => setPeriod('today')}
+            >
+              <span>Today</span>
+            </button>
+          </div>
+        </div>
+
         <div className="leaderboard-sort-group">
           <span className="sort-label">Rank by:</span>
           <div className="sort-segmented-control">
@@ -222,9 +286,9 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
 
                 {/* Primary Revenue Display */}
                 <div className="wh-revenue-block">
-                  <span className="metric-caption">Total Billed Revenue</span>
+                  <span className="metric-caption">Billed Revenue ({period.toUpperCase()})</span>
                   <div className="revenue-val">
-                    <MoneyAmount value={wh.revenue} />
+                    <MoneyAmount value={getWhRevenue(wh)} />
                   </div>
                 </div>
 
@@ -246,7 +310,7 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
                 <div className="wh-metrics-strip">
                   <div className="strip-item">
                     <small>Units Sold</small>
-                    <strong>{formatNumber(wh.unitsSold)}</strong>
+                    <strong>{formatNumber(getWhUnits(wh))}</strong>
                   </div>
                   <div className="strip-item">
                     <small>Active SKUs</small>
@@ -336,14 +400,14 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
                 {/* Product Revenue & Quantity Grid */}
                 <div className="product-metrics-grid">
                   <div className="p-metric-item highlight">
-                    <small>Total Revenue</small>
+                    <small>Revenue ({period.toUpperCase()})</small>
                     <strong className="p-rev-val">
-                      <MoneyAmount value={item.revenue} />
+                      <MoneyAmount value={getItemRevenue(item)} />
                     </strong>
                   </div>
                   <div className="p-metric-item">
                     <small>Units Sold</small>
-                    <strong>{formatNumber(item.unitsSold)} <span className="unit-label">Units</span></strong>
+                    <strong>{formatNumber(getItemUnits(item))} <span className="unit-label">Units</span></strong>
                   </div>
                   <div className="p-metric-item">
                     <small>Stock on Hand</small>
@@ -372,121 +436,140 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
         </div>
       )}
 
-      {/* VIEW 3: STORE DRILLDOWN SHOWCASE */}
+      {/* VIEW 3: STORE DRILLDOWN SHOWCASE - LEFT-SIDE WAREHOUSE SELECTOR */}
       {activeTab === 'drilldown' && (
-        <div className="drilldown-showcase-container">
-          {/* Top Warehouse Selector Strip - Clearly shows which warehouse is selected without redundant lists */}
-          <div className="drilldown-selector-strip">
-            <span className="strip-label">Select Warehouse:</span>
-            <div className="strip-pills-row">
+        <div className="drilldown-layout-split">
+          {/* LEFT SIDEBAR: Warehouse Selector */}
+          <aside className="drilldown-left-sidebar" aria-label="Select Warehouse to Inspect">
+            <div className="drilldown-sidebar-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Store size={16} />
+                <h4>Select Warehouse</h4>
+              </div>
+              <span className="sidebar-count-badge">{rawWarehouses.length}</span>
+            </div>
+
+            <div className="drilldown-sidebar-list">
               {rawWarehouses.map((wh, idx) => {
                 const isActive = wh.id === selectedWarehouseId;
+                const whRev = getWhRevenue(wh);
+                const whSold = getWhUnits(wh);
+
                 return (
                   <button
                     key={wh.id}
                     type="button"
-                    className={`drilldown-pill-btn ${isActive ? 'is-active' : ''}`}
+                    className={`drilldown-sidebar-item ${isActive ? 'is-active' : ''}`}
                     onClick={() => setSelectedWarehouseId(wh.id)}
                   >
-                    <span className="pill-rank">#{idx + 1}</span>
-                    <span className="pill-name">{wh.displayName || wh.name}</span>
-                    <span className="pill-rev"><MoneyAmount value={wh.revenue} /></span>
+                    <div className="sidebar-item-header">
+                      <span className={`pill-rank rank-${idx + 1}`}>#{idx + 1}</span>
+                      <strong className="sidebar-wh-name">{wh.displayName || wh.name}</strong>
+                    </div>
+                    <span className="sidebar-wh-loc">{wh.location}</span>
+                    <div className="sidebar-item-footer">
+                      <span className="sidebar-wh-rev"><MoneyAmount value={whRev} /></span>
+                      <span className="sidebar-wh-units">{formatNumber(whSold)} sold</span>
+                    </div>
+                    {isActive && <ChevronRight size={16} className="sidebar-active-arrow" />}
                   </button>
                 );
               })}
             </div>
-          </div>
+          </aside>
 
-          {/* Detailed Performance Panel for Selected Warehouse */}
-          {activeDrilldownWarehouse ? (
-            <div className="drilldown-main-card">
-              {/* Header Hero Banner */}
-              <div className="drilldown-hero-banner">
-                <div className="drilldown-hero-title">
-                  <div className="store-tag">
-                    <Store size={16} />
-                    <span>Active Store Outlet &bull; {activeDrilldownWarehouse.displayName || activeDrilldownWarehouse.name}</span>
-                  </div>
-                  <h3>{activeDrilldownWarehouse.displayName || activeDrilldownWarehouse.name}</h3>
-                  <p>{activeDrilldownWarehouse.location} &bull; Operational Commercial Hub</p>
-                </div>
-                <div className="drilldown-hero-metrics">
-                  <div className="drilldown-hero-stat">
-                    <small>Total Billed Revenue</small>
-                    <strong style={{ color: '#0284c7' }}>
-                      <MoneyAmount value={activeDrilldownWarehouse.revenue} />
-                    </strong>
-                  </div>
-                  <div className="drilldown-hero-stat">
-                    <small>Units Sold</small>
-                    <strong>{formatNumber(activeDrilldownWarehouse.unitsSold)} Units</strong>
-                  </div>
-                  <div className="drilldown-hero-stat">
-                    <small>Stock on Hand</small>
-                    <strong>{formatNumber(activeDrilldownWarehouse.stockUnits)} Units</strong>
-                  </div>
-                  <div className="drilldown-hero-stat">
-                    <small>Stock Health</small>
-                    <strong style={{ color: '#059669' }}>
-                      {Math.min(100, Math.max(0, activeDrilldownWarehouse.stockHealth ?? 95))}/100
-                    </strong>
-                  </div>
-                  <div className="drilldown-hero-stat">
-                    <small>Network Share</small>
-                    <strong style={{ color: '#16a34a' }}>{activeDrilldownWarehouse.salesShare}%</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Itemized Fast Sellers in this Branch with Name & Live Stock On Hand */}
-              <div className="drilldown-sku-list-section">
-                <div className="section-head">
-                  <Sparkles size={16} style={{ color: '#d97706' }} />
-                  <h4>Top Velocity Merchandise at this Location</h4>
-                </div>
-
-                <div className="drilldown-skus-grid">
-                  {activeDrilldownWarehouse.topItems?.length ? (
-                    activeDrilldownWarehouse.topItems.map((sku, i) => {
-                      const itemName = sku.name || sku.item || sku.item_name || sku.code || sku.item_code || 'Merchandise Item';
-                      const itemCode = sku.code || sku.item_code || 'SKU';
-                      const unitsSold = Number(sku.units ?? sku.qty ?? 0);
-                      const onHand = Number(sku.onHandStock ?? sku.on_hand_stock ?? 0);
-                      const salesAmt = Number(sku.sales ?? 0);
-
-                      return (
-                        <div key={`${activeDrilldownWarehouse.id}-${itemCode}-${i}`} className="drilldown-sku-card">
-                          <div className="sku-rank-pill">#{i + 1}</div>
-                          <div className="sku-info">
-                            <strong className="sku-name" title={itemName}>{itemName}</strong>
-                            <code className="sku-code">{itemCode}</code>
-                          </div>
-                          <div className="sku-stock-stats">
-                            <small>Stock On Hand</small>
-                            <span className={`sku-stock-badge ${onHand > 0 ? 'is-instock' : 'is-out'}`}>
-                              {formatNumber(onHand)} units in stock
-                            </span>
-                          </div>
-                          <div className="sku-sales-stats">
-                            <strong className="sku-rev"><MoneyAmount value={salesAmt} /></strong>
-                            <small className="sku-sold">{formatNumber(unitsSold)} units sold</small>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="empty-drilldown-note">
-                      No fast-moving item records attributed to this store yet.
+          {/* RIGHT PANE: Detailed Performance Panel for Selected Warehouse */}
+          <div className="drilldown-content-pane">
+            {activeDrilldownWarehouse ? (
+              <div className="drilldown-main-card">
+                {/* Header Hero Banner */}
+                <div className="drilldown-hero-banner">
+                  <div className="drilldown-hero-title">
+                    <div className="store-tag">
+                      <Store size={16} />
+                      <span>Active Store Outlet &bull; {activeDrilldownWarehouse.displayName || activeDrilldownWarehouse.name}</span>
                     </div>
-                  )}
+                    <h3>{activeDrilldownWarehouse.displayName || activeDrilldownWarehouse.name}</h3>
+                    <p>{activeDrilldownWarehouse.location} &bull; Operational Commercial Hub</p>
+                  </div>
+                  <div className="drilldown-hero-metrics">
+                    <div className="drilldown-hero-stat">
+                      <small>Billed Revenue ({period.toUpperCase()})</small>
+                      <strong style={{ color: '#0284c7' }}>
+                        <MoneyAmount value={getWhRevenue(activeDrilldownWarehouse)} />
+                      </strong>
+                    </div>
+                    <div className="drilldown-hero-stat">
+                      <small>Units Sold</small>
+                      <strong>{formatNumber(getWhUnits(activeDrilldownWarehouse))} Units</strong>
+                    </div>
+                    <div className="drilldown-hero-stat">
+                      <small>Stock on Hand</small>
+                      <strong>{formatNumber(activeDrilldownWarehouse.stockUnits)} Units</strong>
+                    </div>
+                    <div className="drilldown-hero-stat">
+                      <small>Stock Health</small>
+                      <strong style={{ color: '#059669' }}>
+                        {Math.min(100, Math.max(0, activeDrilldownWarehouse.stockHealth ?? 95))}/100
+                      </strong>
+                    </div>
+                    <div className="drilldown-hero-stat">
+                      <small>Network Share</small>
+                      <strong style={{ color: '#16a34a' }}>{activeDrilldownWarehouse.salesShare}%</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Itemized Fast Sellers in this Branch with Name & Live Stock On Hand */}
+                <div className="drilldown-sku-list-section">
+                  <div className="section-head">
+                    <Sparkles size={16} style={{ color: '#d97706' }} />
+                    <h4>Top Velocity Merchandise at this Location</h4>
+                  </div>
+
+                  <div className="drilldown-skus-grid">
+                    {activeDrilldownWarehouse.topItems?.length ? (
+                      activeDrilldownWarehouse.topItems.map((sku, i) => {
+                        const itemName = sku.name || sku.item || sku.item_name || sku.code || sku.item_code || 'Merchandise Item';
+                        const itemCode = sku.code || sku.item_code || 'SKU';
+                        const unitsSold = Number(sku.units ?? sku.qty ?? 0);
+                        const onHand = Number(sku.onHandStock ?? sku.on_hand_stock ?? 0);
+                        const salesAmt = Number(sku.sales ?? 0);
+
+                        return (
+                          <div key={`${activeDrilldownWarehouse.id}-${itemCode}-${i}`} className="drilldown-sku-card">
+                            <div className="sku-rank-pill">#{i + 1}</div>
+                            <div className="sku-info">
+                              <strong className="sku-name" title={itemName}>{itemName}</strong>
+                              <code className="sku-code">{itemCode}</code>
+                            </div>
+                            <div className="sku-stock-stats">
+                              <small>Stock On Hand</small>
+                              <span className={`sku-stock-badge ${onHand > 0 ? 'is-instock' : 'is-out'}`}>
+                                {formatNumber(onHand)} units in stock
+                              </span>
+                            </div>
+                            <div className="sku-sales-stats">
+                              <strong className="sku-rev"><MoneyAmount value={salesAmt} /></strong>
+                              <small className="sku-sold">{formatNumber(unitsSold)} units sold</small>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="empty-drilldown-note">
+                        No fast-moving item records attributed to this store yet.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="empty-drilldown-state">
-              Please select a warehouse from the strip above.
-            </div>
-          )}
+            ) : (
+              <div className="empty-drilldown-state">
+                Please select a warehouse from the sidebar on the left.
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>

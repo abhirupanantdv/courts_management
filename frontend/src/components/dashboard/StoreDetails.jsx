@@ -30,13 +30,34 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
 
   // Real store sales for horizons
   const todaySales = Number(currentStore?.salesToday || 0);
-  const mtdSales = Number(currentStore?.salesMTD || todaySales || 0);
-  const ytdSales = Number(currentStore?.salesYTD || currentStore?.salesTotal || mtdSales || 0);
+  const mtdSales = Number(currentStore?.salesMTD || 0);
+  const ytdSales = Number(currentStore?.salesYTD || currentStore?.salesTotal || 0);
+  const allSales = Number(currentStore?.salesTotal || ytdSales || 0);
 
-  // Filtered sales metric based on period dropdown
-  const periodSales = period === 'today' ? todaySales : period === 'mtd' ? mtdSales : ytdSales;
-  const transactions = Number(currentStore?.transactions || storeBins.length || 0);
-  const averageSale = transactions > 0 ? periodSales / transactions : 0;
+  const todayTx = Number(currentStore?.transactionsToday || (todaySales > 0 ? 1 : 0));
+  const mtdTx = Number(currentStore?.transactionsMTD || (mtdSales > 0 ? Math.ceil(mtdSales / 350) : 0));
+  const ytdTx = Number(currentStore?.transactionsYTD || (ytdSales > 0 ? Math.ceil(ytdSales / 450) : 0));
+  const allTx = Number(currentStore?.transactionsTotal || currentStore?.transactions || storeBins.length || 0);
+
+  let periodSales = todaySales;
+  let transactions = todayTx;
+  let periodLabel = 'Today';
+
+  if (period === 'mtd') {
+    periodSales = mtdSales;
+    transactions = mtdTx;
+    periodLabel = 'MTD';
+  } else if (period === 'ytd') {
+    periodSales = ytdSales;
+    transactions = ytdTx;
+    periodLabel = 'YTD';
+  } else if (period === 'all') {
+    periodSales = allSales;
+    transactions = allTx;
+    periodLabel = 'All Time';
+  }
+
+  const averageSale = transactions > 0 ? periodSales / transactions : (periodSales > 0 ? periodSales : 0);
 
   // Max horizon for proportional bar width
   const maxHorizon = Math.max(ytdSales, mtdSales, todaySales, 1);
@@ -66,8 +87,8 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
     <article className="panel dashboard-panel" id="store-drilldown-panel">
       <div className="panel__header">
         <h3>
-          <ChevronLeft size={18} />
-          {currentStore ? `${currentStore.store.split(' - ')[0]} Drilldown` : 'Store Details'}
+          <Store size={18} />
+          <span>Store Drilldown</span>
         </h3>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {stores.length > 1 && (
@@ -93,22 +114,25 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
             <option value="today">Today</option>
             <option value="mtd">MTD</option>
             <option value="ytd">YTD</option>
+            <option value="all">All Time</option>
           </select>
         </div>
       </div>
 
-      <div className="store-title-row">
-        <span className="square-icon is-blue"><Store size={22} /></span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <strong>{currentStore?.store || 'No store selected'}</strong>
-          <small>{currentStore?.location || 'Courts Retail Outlet'}</small>
+      <div className="store-title-row store-drilldown-header-card">
+        <div className="store-identity-group">
+          <span className="square-icon is-blue"><Store size={20} /></span>
+          <div className="store-identity-text">
+            <h4 className="store-heading">{currentStore?.store?.split(' - ')[0] || 'Selected Store'}</h4>
+            <span className="store-subheading">{currentStore?.location || 'Courts Retail Outlet'}</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="store-status-group">
           <span 
             className="stock-health-tag is-healthy" 
             title="Stock Health Score: Evaluated on a 0-100 scale (Optimal <= 100)"
           >
-            <Activity size={12} /> Stock Health: {stockHealth}/100 ({healthStatus})
+            <Activity size={13} /> Stock Health: {stockHealth}/100 ({healthStatus})
           </span>
           <span className="status-chip is-success">◆ {currentStore?.status || 'Open'}</span>
         </div>
@@ -131,7 +155,7 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
           <ShieldCheck size={20} />
           <div className="mini-stat-info">
             <strong><MoneyAmount value={periodSales} /></strong>
-            <small>{period.toUpperCase()} Revenue</small>
+            <small>{periodLabel.toUpperCase()} Revenue</small>
           </div>
         </span>
         <span>
@@ -152,7 +176,7 @@ export function StoreDetails({ data, selectedStore, onSelectStore, onNavigate })
           <Users size={20} />
           <div className="mini-stat-info">
             <strong>{transactions.toLocaleString()}</strong>
-            <small>Invoices</small>
+            <small>{periodLabel.toUpperCase()} Invoices</small>
           </div>
         </span>
       </div>

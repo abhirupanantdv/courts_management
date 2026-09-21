@@ -5511,87 +5511,339 @@ td {
 }
 
 /* ==========================================================================
-   REDESIGNED STORE DRILLDOWN SHOWCASE (FULL WIDTH & CLEAN NAVIGATION)
+   REDESIGNED STORE DRILLDOWN SHOWCASE - LEFT-SIDE WAREHOUSE SELECTOR
    ========================================================================== */
-.drilldown-showcase-container {
+.drilldown-layout-split {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .drilldown-layout-split {
+    grid-template-columns: 260px 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .drilldown-layout-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.drilldown-left-sidebar {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
-.drilldown-selector-strip {
+.drilldown-sidebar-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 16px;
+  justify-content: space-between;
+  padding: 14px 16px;
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  flex-wrap: wrap;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.strip-label {
-  font-size: 0.78rem;
+.drilldown-sidebar-header h4 {
+  margin: 0;
+  font-size: 0.88rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
-  white-space: nowrap;
+  color: #0f172a;
 }
 
-.strip-pills-row {
+.sidebar-count-badge {
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.drilldown-sidebar-list {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+  max-height: 520px;
+  overflow-y: auto;
 }
 
-.drilldown-pill-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+.drilldown-sidebar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  text-align: left;
   cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #334155;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
+  position: relative;
 }
 
-.drilldown-pill-btn:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  transform: translateY(-1px);
+.drilldown-sidebar-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateX(2px);
 }
 
-.drilldown-pill-btn.is-active {
+.drilldown-sidebar-item.is-active {
   background: #0f172a;
   border-color: #0f172a;
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
 }
 
-.drilldown-pill-btn .pill-rank {
-  font-size: 0.75rem;
-  font-weight: 800;
+.sidebar-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drilldown-sidebar-item .sidebar-wh-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.drilldown-sidebar-item.is-active .sidebar-wh-name {
+  color: #ffffff;
+}
+
+.sidebar-wh-loc {
+  font-size: 0.74rem;
   color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.drilldown-pill-btn.is-active .pill-rank {
-  color: #38bdf8;
+.drilldown-sidebar-item.is-active .sidebar-wh-loc {
+  color: #94a3b8;
 }
 
-.drilldown-pill-btn .pill-rev {
-  font-size: 0.78rem;
+.sidebar-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.drilldown-sidebar-item.is-active .sidebar-item-footer {
+  border-top-color: #334155;
+}
+
+.sidebar-wh-rev {
+  font-size: 0.8rem;
   font-weight: 700;
   color: #0284c7;
 }
 
-.drilldown-pill-btn.is-active .pill-rev {
-  color: #7dd3fc;
+.drilldown-sidebar-item.is-active .sidebar-wh-rev {
+  color: #38bdf8;
+}
+
+.sidebar-wh-units {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.drilldown-sidebar-item.is-active .sidebar-wh-units {
+  color: #cbd5e1;
+}
+
+.sidebar-active-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #38bdf8;
+}
+
+.drilldown-content-pane {
+  min-width: 0;
+}
+
+/* ==========================================================================
+   STORE DRILLDOWN HEADER CARD (CLEAN & NON-REDUNDANT)
+   ========================================================================== */
+.store-drilldown-header-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.store-identity-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.store-identity-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.store-heading {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.store-subheading {
+  font-size: 0.76rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.store-status-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   ITEM-WISE SALES REGISTER BY WAREHOUSE
+   ========================================================================== */
+.item-sales-register-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.item-register-title-group h3 {
+  margin: 0 0 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.item-register-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.register-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+}
+
+.register-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 5px 10px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.register-search-box input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.84rem;
+  width: 100%;
+  color: #0f172a;
+}
+
+.register-search-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.register-kpi-row {
+  margin-bottom: 4px;
+}
+
+.register-table-container {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.register-item-name {
+  display: block;
+  font-size: 0.86rem;
+  color: #0f172a;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.register-item-code {
+  font-size: 0.72rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.register-wh-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.register-group-tag {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.register-footer-actions {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
 }
 
 .drilldown-main-card {

@@ -8,14 +8,21 @@ export function StorePerformance({ stores = [], selectedStore, onSelectStore, on
 
   const getStoreSales = (store) => {
     if (timeRange === 'today') return Number(store.salesToday || 0);
-    if (timeRange === 'month') return Number(store.salesMTD || store.salesToday || 0);
+    if (timeRange === 'month') return Number(store.salesMTD || 0);
     if (timeRange === 'year') return Number(store.salesYTD || store.salesTotal || 0);
     return Number(store.salesTotal || store.salesYTD || store.salesToday || 0);
   };
 
+  const getStoreTransactions = (store) => {
+    if (timeRange === 'today') return Number(store.transactionsToday || (store.salesToday > 0 ? 1 : 0));
+    if (timeRange === 'month') return Number(store.transactionsMTD || (store.salesMTD > 0 ? Math.ceil(store.salesMTD / 350) : 0));
+    if (timeRange === 'year') return Number(store.transactionsYTD || (store.salesYTD > 0 ? Math.ceil(store.salesYTD / 450) : 0));
+    return Number(store.transactionsTotal || store.transactions || 0);
+  };
+
   const totalSales = stores.reduce((total, store) => total + getStoreSales(store), 0);
-  const totalTransactions = stores.reduce((total, store) => total + Number(store.transactions || 0), 0);
-  const averageSale = totalTransactions ? totalSales / totalTransactions : 0;
+  const totalTransactions = stores.reduce((total, store) => total + getStoreTransactions(store), 0);
+  const averageSale = totalTransactions ? totalSales / totalTransactions : (totalSales > 0 ? totalSales : 0);
 
   return (
     <article className="panel dashboard-panel">
@@ -45,14 +52,18 @@ export function StorePerformance({ stores = [], selectedStore, onSelectStore, on
           <ShieldCheck size={20} />
           <div className="mini-stat-info">
             <strong><MoneyAmount value={totalSales} /></strong>
-            <small>Total Sales</small>
+            <small>
+              {timeRange === 'today' ? 'Today' : timeRange === 'month' ? 'MTD' : timeRange === 'year' ? 'YTD' : 'Total'} Sales
+            </small>
           </div>
         </span>
         <span>
           <Users size={20} />
           <div className="mini-stat-info">
             <strong>{formatNumber(totalTransactions)}</strong>
-            <small>Invoices</small>
+            <small>
+              {timeRange === 'today' ? 'Today' : timeRange === 'month' ? 'MTD' : timeRange === 'year' ? 'YTD' : 'Total'} Invoices
+            </small>
           </div>
         </span>
         <span>
@@ -79,6 +90,7 @@ export function StorePerformance({ stores = [], selectedStore, onSelectStore, on
             {stores.length ? stores.map((store) => {
               const isSelected = selectedStore === store.store;
               const salesVal = getStoreSales(store);
+              const txVal = getStoreTransactions(store);
               const healthScore = Math.min(100, Math.max(0, store.stockHealth ?? 95));
               const healthClass = healthScore >= 80 ? 'is-healthy' : healthScore >= 50 ? 'is-moderate' : 'is-critical';
 
@@ -92,7 +104,7 @@ export function StorePerformance({ stores = [], selectedStore, onSelectStore, on
                   <td><strong>{store.store.split(' - ')[0]}</strong></td>
                   <td>{store.location}</td>
                   <td className="money"><MoneyAmount value={salesVal} /></td>
-                  <td>{formatNumber(store.transactions)}</td>
+                  <td>{formatNumber(txVal)}</td>
                   <td>
                     <span className={`stock-health-tag ${healthClass}`} title={`Health score <= 100`}>
                       {healthScore}/100

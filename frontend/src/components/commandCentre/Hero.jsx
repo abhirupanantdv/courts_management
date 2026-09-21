@@ -1,7 +1,6 @@
 const HERO_IMAGE_URL = '/assets/courts_management/courts/assets/courts-reference-hero.jpg';
 
 export function Hero({ data = {}, onNavigate }) {
-  const isErpLive = data?.source?.type === 'erpnext';
   const stores = data?.heroMetrics?.stores ?? 0;
   const salesToday = data?.heroMetrics?.salesToday ?? 0;
   const inventoryQty = data?.kpis?.inventoryQty?.value ?? 0;
@@ -26,11 +25,6 @@ export function Hero({ data = {}, onNavigate }) {
           }}
         />
 
-        {/* Live system sync status pill */}
-        <div className="hero-courts-banner__pill">
-          <span className="hero-courts-banner__dot" />
-          <span>{isErpLive ? 'Live System Sync Active' : 'Courts Command Centre'}</span>
-        </div>
 
         {/* Interactive Honeycomb Hotspot Navigation & Telemetry Tooltips */}
         <div className="hero-courts-banner__hotspots" aria-label="Interactive operational hotspots">

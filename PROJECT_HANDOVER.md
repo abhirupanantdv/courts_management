@@ -421,3 +421,41 @@ Implemented a robust, unified 3-tier responsive CSS design system in `frontend/s
      - **Laptop & Desktop (`>= 1025px`):** 3 balanced horizontal columns.
      - **Tablet (`641px - 1024px`):** 3 columns with adapted padding and 1.35rem typography.
      - **Mobile (`<= 640px`):** Single-column stack with 100% full-width cards and touch-optimized padding.
+
+---
+
+### 9. Left-Sidebar Warehouse Selector, Clean Store Drilldown, Item-Wise Sales Register & Period Filters
+
+#### A. Sales Performance Leaderboard Left-Sidebar Drilldown (`SalesPerformanceLeaderboard.jsx`)
+- **Left-Sidebar Architecture:** Migrated the Store Drilldown view from a horizontal top pill strip to an executive **two-column split layout** (`.drilldown-layout-split` with `grid-template-columns: 290px 1fr`):
+  - **Left Sidebar (`.drilldown-left-sidebar`):** Vertical list of warehouse cards displaying numeric rank badge (`#1`, `#2`...), store name, location, revenue in the active period, and units sold. Includes clear active state styling, cyan highlights, and active chevron indicators.
+  - **Right Content Pane (`.drilldown-content-pane`):** Hero metric tiles (Billed Revenue, Units Sold, Stock on Hand, Stock Health, Network Share) and fast-moving velocity merchandise items with live bin on-hand stock counts.
+  - **Period-Aware Ranking:** Added period filtering control pills (`All Time`, `This Year (YTD)`, `This Month (MTD)`, `Today`) to dynamically sort both warehouses and products based on period sales.
+  - **Responsive Adaptation:** Automatically collapses into a single stacked column on mobile devices (`<= 768px`).
+
+#### B. Store Drilldown Header De-duplication & Clean Alignment (`StoreDetails.jsx`)
+- **De-duplication:** Replaced the cluttered layout where the warehouse name was repeated 4 times ("POM Warehouse Drilldown" in header, "POM Warehouse" in dropdown, "POM Warehouse - CTS" in body, and "CTS" in tag).
+- **Streamlined Layout:**
+  - Header displays a clean `<h3><Store size={18} /> Store Drilldown</h3>` with aligned Store and Period selectors on the top-right.
+  - Store identity card (`.store-drilldown-header-card`) cleanly presents the warehouse name once, accompanied by the location subtitle (`Courts Retail Outlet`), stock health badge (`<Activity size={13} /> Stock Health: 91/100`), and live status chip (`Open`).
+- **Period Filter Calculation:** Correctly bound `transactions` to the active period (`transactionsToday`, `transactionsMTD`, `transactionsYTD`, `transactionsTotal`) instead of displaying all-time transaction counts (e.g. 1,330) for daily views.
+- **Accurate Average Ticket:** Computed `averageSale` as `periodSales / transactions` for the selected timeframe.
+
+#### C. Replacement of Warehouse Analysis with Item-Wise Sales Register by Warehouse (`ItemSalesRegisterByWarehouse.jsx`)
+- **Component Replacement:** Removed the deprecated donut chart (`WarehouseAnalysis.jsx`) from the Command Centre bottom grid and implemented `ItemSalesRegisterByWarehouse.jsx`.
+- **Server-Side API (`courts_management/api.py`):** Added `item_sales_register_raw` query joining `tabSales Invoice Item`, `tabSales Invoice`, `tabItem`, and `tabBin` grouped by warehouse and item code.
+- **Component Capabilities:**
+  - **Branch Switcher:** Filter by All Warehouses or specific branch locations (POM Warehouse, Lae Warehouse, 8 Mile Warehouse, Cellarmaster).
+  - **Period Filter:** Switch between All Time, YTD, MTD, and Today.
+  - **Live Search:** Instant filtering across Item Name, SKU Code, or Item Category.
+  - **Executive KPI Strip:** Four live metric cards displaying Billed Revenue, Units Sold, Unique SKUs, and Average Item Rate.
+  - **Interactive Data Table:** Item Name, SKU Code, Branch Badge, Category Tag, Units Sold, Avg Selling Rate, Total Billed, Stock on Hand Badge (in-stock vs critical), and Last Sold Date.
+  - **Pagination / Expandable View:** Clean progressive loading of rows.
+
+#### D. System-Wide Period Filter Verification (`Today`, `MTD`, `YTD`, `All Time`)
+- **Backend API (`courts_management/api.py`):**
+  - Updated `wh_sales_summary_raw` to aggregate period-specific invoices (`today_invoices`, `mtd_invoices`, `ytd_invoices`) and units (`today_units`, `mtd_units`, `ytd_units`).
+  - Added period fields to `store_performance`, `warehouse_sales_leaderboard`, and `item_sales_leaderboard`.
+- **Store Performance (`StorePerformance.jsx`):** Dynamically computes period-specific transaction counts and average tickets based on the selected period.
+- **Sales Page (`SalesPage.jsx`):** Added a Period dropdown (`All Time`, `YTD`, `MTD`, `Today`) filtering invoices by posting date.
+- **Finance Page (`FinancePage.jsx`):** Wired up the Period dropdown to filter General Ledger stream entries by date.

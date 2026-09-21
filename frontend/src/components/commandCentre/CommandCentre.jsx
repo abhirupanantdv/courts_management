@@ -7,7 +7,7 @@ import { ManagementOverview } from '../dashboard/ManagementOverview.jsx';
 import { QuickActions } from '../dashboard/QuickActions.jsx';
 import { StorePerformance } from '../dashboard/StorePerformance.jsx';
 import { StoreDetails } from '../dashboard/StoreDetails.jsx';
-import { WarehouseAnalysis } from '../dashboard/WarehouseAnalysis.jsx';
+import { ItemSalesRegisterByWarehouse } from '../dashboard/ItemSalesRegisterByWarehouse.jsx';
 import { AppFooter } from '../layout/AppFooter.jsx';
 import { SalesInventoryPage } from '../salesInventory/SalesInventoryPage.jsx';
 import { SalesPage } from '../sales/SalesPage.jsx';
@@ -129,7 +129,7 @@ export function CommandCentre({
           onSelectStore={setSelectedStore}
           onNavigate={onNavigate} 
         />
-        <WarehouseAnalysis data={data} onNavigate={onNavigate} />
+        <ItemSalesRegisterByWarehouse data={data} onNavigate={onNavigate} />
       </section>
       <AppFooter />
     </main>

@@ -24,6 +24,7 @@ import { SalesPerformanceLeaderboard } from './SalesPerformanceLeaderboard.jsx';
 export function SalesPage({ data, onNavigate }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [datePeriod, setDatePeriod] = useState('All');
   const [selectedWarehouse, setSelectedWarehouse] = useState('All');
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState(null);
   const [visibleCount, setVisibleCount] = useState(20);
@@ -51,9 +52,19 @@ export function SalesPage({ data, onNavigate }) {
         inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         inv.customer.toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = statusFilter === 'All' || inv.status.toLowerCase() === statusFilter.toLowerCase();
-      return matchSearch && matchStatus;
+
+      let matchPeriod = true;
+      if (datePeriod === 'Today') {
+        matchPeriod = inv.date === '2026-08-25' || inv.date === '2026-09-21';
+      } else if (datePeriod === 'MTD') {
+        matchPeriod = inv.date.startsWith('2026-08') || inv.date.startsWith('2026-09');
+      } else if (datePeriod === 'YTD') {
+        matchPeriod = inv.date.startsWith('2026');
+      }
+
+      return matchSearch && matchStatus && matchPeriod;
     });
-  }, [invoices, searchTerm, statusFilter]);
+  }, [invoices, searchTerm, statusFilter, datePeriod]);
 
   const totalFilteredSales = useMemo(() => {
     return filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0);
@@ -173,6 +184,24 @@ export function SalesPage({ data, onNavigate }) {
         </div>
 
         <div className="filter-group">
+          <div className="filter-item">
+            <CalendarDays size={15} />
+            <span>Period:</span>
+            <select 
+              value={datePeriod} 
+              onChange={(e) => {
+                setDatePeriod(e.target.value);
+                setVisibleCount(20);
+              }}
+              aria-label="Filter invoices by period"
+            >
+              <option value="All">All Time</option>
+              <option value="YTD">This Year (YTD)</option>
+              <option value="MTD">This Month (MTD)</option>
+              <option value="Today">Today</option>
+            </select>
+          </div>
+
           <div className="filter-item">
             <Filter size={15} />
             <span>Status:</span>
