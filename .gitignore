@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+frontend/node_modules/
 Courts Management/node_modules/
 
 # Local env files

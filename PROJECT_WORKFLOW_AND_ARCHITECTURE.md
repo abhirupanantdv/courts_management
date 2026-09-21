@@ -118,30 +118,34 @@ The application fetches live data from standard ERPNext DocTypes in parallel:
 ## 4. Repository Structure
 
 ```
-Courts Management 2/
-├── .gitignore                          <-- Git exclusion rules
+courts_management/ (Repository Root)
+├── setup.py                            <-- Standard setuptools package installer
+├── pyproject.toml                      <-- PEP 621 package metadata
+├── requirements.txt                    <-- Python dependencies (frappe)
+├── package.json                        <-- Root build convenience scripts
+├── README.md                           <-- App documentation
+├── license.txt                         <-- MIT license
 ├── INSTALLATION_GUIDE.md               <-- Step-by-step bench install guide
-├── PROJECT_WORKFLOW_AND_ARCHITECTURE.md<-- Complete architecture & workflow documentation
+├── PROJECT_WORKFLOW_AND_ARCHITECTURE.md<-- Architecture & workflow documentation
 │
-├── courts_management/                  <-- THE FRAPPE / ERPNEXT APP
-│   ├── pyproject.toml / setup.py       <-- Python packaging definitions
-│   ├── requirements.txt                <-- Python dependencies (frappe)
-│   └── courts_management/
-│       ├── hooks.py                    <-- App configuration & website route rules (/courts)
-│       ├── modules.txt                 <-- Module registration
-│       ├── public/courts/              <-- Pre-compiled production React assets
-│       │   ├── index.html
-│       │   └── assets/ (JS, CSS, images)
-│       ├── www/
-│       │   ├── courts.py               <-- Controller: no_cache=1, injects CSRF token
-│       │   └── courts.html             <-- HTML entry point for /courts
-│       └── courts_management/page/
-│           └── courts_dashboard/       <-- Desk Page definition (/app/courts-dashboard)
-│               ├── courts_dashboard.json
-│               ├── courts_dashboard.js
-│               └── courts_dashboard.css
+├── courts_management/                  <-- Python Frappe package directory
+│   ├── __init__.py
+│   ├── hooks.py                        <-- App configuration & website route rules (/courts)
+│   ├── modules.txt                     <-- Module registration
+│   ├── patches.txt
+│   ├── public/courts/                  <-- Pre-compiled production React assets
+│   │   ├── index.html
+│   │   └── assets/ (JS, CSS, images)
+│   ├── www/
+│   │   ├── courts.py                   <-- Controller: no_cache=1, injects CSRF token
+│   │   └── courts.html                 <-- HTML entry point for /courts
+│   └── page/
+│       └── courts_dashboard/           <-- Desk Page definition (/app/courts-dashboard)
+│           ├── courts_dashboard.json
+│           ├── courts_dashboard.js
+│           └── courts_dashboard.css
 │
-└── Courts Management/                  <-- REACT 19 FRONTEND SOURCE
+└── frontend/                           <-- REACT 19 FRONTEND SOURCE
     ├── package.json                    <-- Node dependencies & scripts
     ├── vite.config.js                  <-- Vite bundler with relative base ('./')
     ├── erpnext.config.json             <-- Optional dev proxy override

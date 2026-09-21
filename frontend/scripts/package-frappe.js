@@ -5,13 +5,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const projectRoot = path.resolve(__dirname, '..');
+const projectRoot = path.resolve(__dirname, '..'); // frontend directory
 const distDir = path.join(projectRoot, 'dist');
-const frappeAppRoot = path.resolve(projectRoot, '..', 'courts_management');
+const frappeAppRoot = path.resolve(projectRoot, '..'); // Repository root (where bench looks for setup.py)
 const frappeModuleDir = path.join(frappeAppRoot, 'courts_management');
 const frappePublicCourtsDir = path.join(frappeModuleDir, 'public', 'courts');
 const frappeWwwDir = path.join(frappeModuleDir, 'www');
-const frappePageDir = path.join(frappeModuleDir, 'courts_management', 'page', 'courts_dashboard');
+const frappePageDir = path.join(frappeModuleDir, 'page', 'courts_dashboard');
+const frappeModulePageDir = path.join(frappeModuleDir, 'courts_management', 'page', 'courts_dashboard');
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -47,12 +48,13 @@ ensureDir(frappeModuleDir);
 ensureDir(frappePublicCourtsDir);
 ensureDir(frappeWwwDir);
 ensureDir(frappePageDir);
+ensureDir(frappeModulePageDir);
 
 // 3. Copy compiled dist into public/courts
 console.log('Copying dist/ -> courts_management/public/courts/ ...');
 copyRecursive(distDir, frappePublicCourtsDir);
 
-// 4. Create setup.py & pyproject.toml
+// 4. Create setup.py & pyproject.toml at repository root
 const setupPy = `from setuptools import setup, find_packages
 
 with open("requirements.txt") as f:
@@ -137,7 +139,6 @@ fs.writeFileSync(path.join(frappeWwwDir, 'courts.py'), wwwCourtsPy, 'utf-8');
 
 // 8. www/courts.html (Find generated asset names from dist)
 const distIndexHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8');
-// Find js and css bundles
 const jsMatch = distIndexHtml.match(/src=["']\.\/assets\/([^"']+)["']/);
 const cssMatch = distIndexHtml.match(/href=["']\.\/assets\/([^"']+)["']/);
 
@@ -176,9 +177,6 @@ const wwwCourtsHtml = `<!doctype html>
 fs.writeFileSync(path.join(frappeWwwDir, 'courts.html'), wwwCourtsHtml, 'utf-8');
 
 // 9. Create Desk Page: courts_dashboard
-ensureDir(path.join(frappeModuleDir, 'courts_management', 'page'));
-fs.writeFileSync(path.join(frappeModuleDir, 'courts_management', 'page', '__init__.py'), '', 'utf-8');
-
 const deskPageJson = {
   "content": null,
   "creation": "2026-09-20 12:00:00.000000",
@@ -201,11 +199,6 @@ const deskPageJson = {
   "system_page": 0,
   "title": "Courts Command Centre"
 };
-fs.writeFileSync(
-  path.join(frappePageDir, 'courts_dashboard.json'), 
-  JSON.stringify(deskPageJson, null, 2), 
-  'utf-8'
-);
 
 const deskPageJs = `frappe.pages['courts-dashboard'].on_page_load = function(wrapper) {
   var page = frappe.ui.make_app_page({
@@ -226,18 +219,34 @@ const deskPageJs = `frappe.pages['courts-dashboard'].on_page_load = function(wra
   $container.append($iframe);
 };
 `;
-fs.writeFileSync(path.join(frappePageDir, 'courts_dashboard.js'), deskPageJs, 'utf-8');
 
 const deskPageCss = `.layout-main-section {
   padding: 0 !important;
 }
 `;
-fs.writeFileSync(path.join(frappePageDir, 'courts_dashboard.css'), deskPageCss, 'utf-8');
 
-// 10. Write README.md in Frappe app root
+// Write Desk Page to both locations for full Frappe compatibility
+for (const dir of [frappePageDir, frappeModulePageDir]) {
+  ensureDir(dir);
+  fs.writeFileSync(path.join(dir, 'courts_dashboard.json'), JSON.stringify(deskPageJson, null, 2), 'utf-8');
+  fs.writeFileSync(path.join(dir, 'courts_dashboard.js'), deskPageJs, 'utf-8');
+  fs.writeFileSync(path.join(dir, 'courts_dashboard.css'), deskPageCss, 'utf-8');
+}
+
+// 10. Write README.md at Frappe app repository root
 const readmeMd = `# Courts Management - Frappe / ERPNext App
 
 Modern, real-time enterprise command centre, POS register, stock ledger, sales intelligence, and financial analytics dashboard.
+
+## Installation on Frappe Bench:
+\`\`\`bash
+cd ~/frappe-bench
+bench get-app https://github.com/abhirupanantdv/courts_management.git
+bench --site [your-site-name] install-app courts_management
+bench --site [your-site-name] migrate
+bench build --app courts_management
+bench restart
+\`\`\`
 
 ## Direct Routes after Installation:
 - **Standalone Command Centre:** \`http://<your-server-ip-or-dns>/courts\`
@@ -249,7 +258,7 @@ Modern, real-time enterprise command centre, POS register, stock ledger, sales i
 `;
 fs.writeFileSync(path.join(frappeAppRoot, 'README.md'), readmeMd, 'utf-8');
 
-console.log('✓ Successfully created installable Frappe app at: ' + frappeAppRoot);
+console.log('✓ Successfully created installable Frappe app at root: ' + frappeAppRoot);
 console.log('✓ Public assets synced: ' + frappePublicCourtsDir);
 console.log('✓ Web Portal route created: /courts (courts_management/www/courts.html)');
 console.log('✓ Desk Page route created: /app/courts-dashboard');

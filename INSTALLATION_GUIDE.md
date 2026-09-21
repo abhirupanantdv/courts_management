@@ -49,30 +49,36 @@ Once installed on your server, the app is available via two distinct routes:
 
 The Frappe app is located in the repository at:
 ```
-courts_management/
-├── pyproject.toml
-├── setup.py
-├── requirements.txt
-├── README.md
-├── license.txt
-└── courts_management/
-    ├── __init__.py
-    ├── hooks.py
-    ├── modules.txt
-    ├── patches.txt
-    ├── public/
-    │   └── courts/                     <-- Compiled production bundle (JS, CSS, assets)
-    │       ├── index.html
-    │       └── assets/
-    ├── www/
-    │   ├── courts.py                   <-- Portal route controller (disables cache, injects CSRF)
-    │   └── courts.html                 <-- Portal entry template for /courts
-    └── courts_management/
-        └── page/
-            └── courts_dashboard/       <-- Frappe Desk Page (/app/courts-dashboard)
-                ├── courts_dashboard.json
-                ├── courts_dashboard.js
-                └── courts_dashboard.css
+courts_management/ (Repository Root)
+├── setup.py                        <-- Standard setuptools package installer
+├── pyproject.toml                  <-- PEP 621 package metadata
+├── requirements.txt                <-- Python dependencies (frappe)
+├── package.json                    <-- Root npm build scripts
+├── README.md                       <-- App overview
+├── license.txt                     <-- MIT license
+│
+├── courts_management/              <-- Python Frappe package directory
+│   ├── __init__.py
+│   ├── hooks.py                    <-- App hooks & route rules (/courts)
+│   ├── modules.txt
+│   ├── patches.txt
+│   ├── public/
+│   │   └── courts/                 <-- Pre-compiled production bundle (JS, CSS, assets)
+│   │       ├── index.html
+│   │       └── assets/
+│   ├── www/
+│   │   ├── courts.py               <-- Portal route controller (disables cache, injects CSRF)
+│   │   └── courts.html             <-- Portal entry template for /courts
+│   └── page/
+│       └── courts_dashboard/       <-- Frappe Desk Page (/app/courts-dashboard)
+│           ├── courts_dashboard.json
+│           ├── courts_dashboard.js
+│           └── courts_dashboard.css
+│
+└── frontend/                       <-- React 19 + Vite Frontend Source Code
+    ├── package.json
+    ├── vite.config.js
+    └── src/
 ```
 
 ---
@@ -81,29 +87,23 @@ courts_management/
 
 Follow these steps on your Frappe / ERPNext bench server (Ubuntu / Debian / Docker):
 
-### Step 1: Transfer the `courts_management` App to the Server
-Copy the `courts_management` directory to your bench `apps` folder, or clone it if hosted on Git:
+> [!IMPORTANT]
+> If a previous `bench get-app` attempt failed, first remove any partial folder:
+> ```bash
+> cd ~/courts-frappe  # or your bench directory
+> rm -rf apps/courts_management
+> ```
 
+### Step 1: Clone the App via Bench
 ```bash
-# Example if cloning via Git:
-cd ~/frappe-bench
-bench get-app https://github.com/your-org/courts_management.git
-
-# OR if copying manually via SCP / rsync:
-# scp -r courts_management frappe@your-server:~/frappe-bench/apps/
+cd ~/courts-frappe  # (or ~/frappe-bench)
+bench get-app https://github.com/abhirupanantdv/courts_management.git
 ```
 
-### Step 2: Install the App on your Bench Environment
-If copied manually into `apps/courts_management`:
+### Step 2: Install the App onto your Target Site
+Replace `[your-site-name]` with your actual site name (e.g. `site1.local` or `frontend.local`):
 ```bash
-cd ~/frappe-bench
-bench pip install -e apps/courts_management
-```
-
-### Step 3: Install the App onto your Target Site
-Replace `site1.local` with your site name:
-```bash
-bench --site site1.local install-app courts_management
+bench --site [your-site-name] install-app courts_management
 ```
 
 ### Step 4: Run Migrations and Build Assets
