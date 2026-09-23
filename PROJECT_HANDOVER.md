@@ -459,3 +459,46 @@ Implemented a robust, unified 3-tier responsive CSS design system in `frontend/s
 - **Store Performance (`StorePerformance.jsx`):** Dynamically computes period-specific transaction counts and average tickets based on the selected period.
 - **Sales Page (`SalesPage.jsx`):** Added a Period dropdown (`All Time`, `YTD`, `MTD`, `Today`) filtering invoices by posting date.
 - **Finance Page (`FinancePage.jsx`):** Wired up the Period dropdown to filter General Ledger stream entries by date.
+
+---
+
+### 10. Performance Leaderboard Stock Health Removal, Reports Alignment & Authentic ERPNext Schema Sync, and Role-Based Access Control (RBAC)
+
+#### A. Leaderboard Stock Health Removal (`SalesPerformanceLeaderboard.jsx`)
+- Removed the `Stock Health` stat card from the store drilldown top-right hero metrics (`drilldown-hero-metrics`).
+- Maintained symmetrical horizontal layout for the remaining 4 KPIs: **Billed Revenue**, **Units Sold**, **Stock on Hand**, and **Network Share (%)**.
+
+#### B. Reports Suite Cards Alignment & Authentic ERPNext Schema Synchronization (`ReportsPage.jsx`, `api.py`, `components.css`)
+- **Card Alignment Fixes:**
+  - Modernized `.report-cards-grid` with `grid-template-columns: repeat(auto-fill, minmax(320px, 1fr))` and `align-items: stretch`.
+  - Added uniform `height: 100%`, flex column structure with `min-height: 2.7rem` and line clamp on `.report-card-title` so DocType badges sit at the exact same horizontal height.
+  - Normalized description heights with `min-height: 44px` and `flex: 1 1 auto` on `.report-card-desc`.
+  - Pinned footers with `margin-top: auto` ensuring action buttons and stat tags align across all cards in each row.
+- **Authentic ERPNext DocType Schemas & Live Data:**
+  - **Sales Register Table:** Added authentic ERPNext columns: `Invoice ID`, `Posting Date`, `Customer Name`, `Due Date`, `Net Total (PGK)`, `Taxes (PGK)`, `Grand Total (PGK)`, `Outstanding Amount (PGK)`, and `Status`.
+  - **Purchase Register Table:** Added authentic ERPNext columns: `Invoice ID`, `Posting Date`, `Supplier Name`, `Bill / Ref No`, `Due Date`, `Net Total (PGK)`, `Taxes (PGK)`, `Grand Total (PGK)`, `Outstanding Amount (PGK)`, and `Status`.
+  - **Stock Balance Table:** Added authentic ERPNext columns: `Item Code`, `Product Description`, `Category / Group`, `Warehouse`, `In-Stock Qty`, `Valuation Rate (PGK)`, `Balance Value (PGK)`, and `Projected Qty`.
+  - **General Ledger Table:** Added authentic ERPNext columns: `Posting Date`, `Account Code`, `Party`, `Voucher Type & No`, `Against Account`, `Debit (PGK)`, and `Credit (PGK)`.
+  - **CSV Export:** Updated `handleExportCsv` to export complete authentic column sets for all reports.
+
+#### C. Role-Based Access Control (RBAC) Architecture (`rolePermissions.js`, `Header.jsx`, `App.jsx`, `CommandCentre.jsx`, `api.py`)
+- **Backend API (`courts_management/api.py`):**
+  - Added user roles and user metadata extraction using `frappe.get_roles(frappe.session.user)`.
+  - Added `@frappe.whitelist() def get_user_roles()` endpoint.
+  - Included `userRoles` and `user` object in `get_dashboard_data()`.
+- **Frontend Role Permissions (`rolePermissions.js`):**
+  - Maps standard ERPNext roles to functional domains:
+    - **Sales Roles:** `Sales User`, `Sales Manager`, `Sales Master Manager`, `Sales Person`
+    - **Stock Roles:** `Stock User`, `Stock Manager`, `Item Manager`
+    - **Purchase Roles:** `Purchase User`, `Purchase Manager`, `Purchase Master Manager`
+    - **Finance Roles:** `Accounts User`, `Accounts Manager`, `Auditor`
+    - **Super Admin Roles:** `System Manager`, `Administrator`, `Workspace Manager`, `Dashboard Manager`, `Report Manager`, `President`, `GM`, `CFO`, `adv developer`
+- **Navigation Gating:**
+  - Desktop links (`.topnav__links`) and mobile drawer (`.mobile-nav-panel`) in `Header.jsx` only render modules authorized by `canAccessModule(userRoles, page)`.
+  - Sales users only see permitted modules (Dashboard, Sales vs Inventory, Sales, Reports). Unauthorized tabs (Inventory, Purchases, Finance) are completely omitted.
+- **Reports Directory & Tab Gating:**
+  - `ReportsPage.jsx` filters directory cards and report selector tabs to `effectiveReports` matching `canAccessReport(userRoles, report.id)`.
+  - Highlights KPI cards on the reports page adapt to show only relevant metrics (e.g. Sales Invoices for sales users, Supplier Accounts for purchase users).
+- **Navigation Guards:**
+  - `handleNavigate` in `App.jsx` and module router in `CommandCentre.jsx` prevent unauthorized page navigation, safely falling back to `dashboard`.
+
