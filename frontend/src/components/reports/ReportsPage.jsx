@@ -64,6 +64,11 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
   const glEntries = data?.glEntries || [];
   const salesmanPosRegister = data?.salesmanPosRegister || [];
 
+  const totalSalesCount = data?.counts?.salesInvoices || salesInvoices.length;
+  const totalPurchaseCount = data?.counts?.purchaseInvoices || purchaseInvoices.length;
+  const totalBinsCount = data?.counts?.bins || bins.length;
+  const totalGlCount = data?.counts?.glEntries || glEntries.length;
+
   const itemMap = useMemo(() => {
     const map = new Map();
     items.forEach((item) => {
@@ -397,7 +402,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
               <span className="kpi-icon is-green"><ShoppingCart size={22} /></span>
               <div>
                 <p>Sales Invoices</p>
-                <strong>{formatNumber(salesInvoices.length)} Records</strong>
+                <strong>{formatNumber(totalSalesCount)} Records</strong>
                 <small>Customer retail ledger</small>
               </div>
             </div>
@@ -407,7 +412,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
               <span className="kpi-icon is-teal"><Boxes size={22} /></span>
               <div>
                 <p>Stock Valuation</p>
-                <strong>{formatNumber(bins.length)} Tracked Bins</strong>
+                <strong>{formatNumber(totalBinsCount)} Tracked Bins</strong>
                 <small>Warehouse balances</small>
               </div>
             </div>
@@ -417,7 +422,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
               <span className="kpi-icon is-amber"><Truck size={22} /></span>
               <div>
                 <p>Supplier Accounts</p>
-                <strong>{formatNumber(purchaseInvoices.length)} Bills</strong>
+                <strong>{formatNumber(totalPurchaseCount)} Bills</strong>
                 <small>Procurement expenditures</small>
               </div>
             </div>
@@ -439,12 +444,12 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
           {effectiveReports.map((report) => {
             const Icon = report.icon;
             let statText = '';
-            if (report.id === 'sales-register') statText = `${formatNumber(salesInvoices.length)} live customer invoices`;
-            else if (report.id === 'stock-balance') statText = `${formatNumber(bins.length)} inventory bins & rates`;
-            else if (report.id === 'purchase-register') statText = `${formatNumber(purchaseInvoices.length)} vendor procurement bills`;
+            if (report.id === 'sales-register') statText = `${formatNumber(totalSalesCount)} live customer invoices`;
+            else if (report.id === 'stock-balance') statText = `${formatNumber(totalBinsCount)} inventory bins & rates`;
+            else if (report.id === 'purchase-register') statText = `${formatNumber(totalPurchaseCount)} vendor procurement bills`;
             else if (report.id === 'profit-and-loss') statText = 'Real-time revenue, COGS & margin';
             else if (report.id === 'store-matrix') statText = `${warehousesList.length || 4} synchronized branch warehouses`;
-            else if (report.id === 'general-ledger') statText = `${formatNumber(glEntries.length)} double-entry ledger postings`;
+            else if (report.id === 'general-ledger') statText = `${formatNumber(totalGlCount)} double-entry ledger postings`;
             else if (report.id === 'salesman-pos-register') statText = `${formatNumber(salesmanPosRegister.length)} retail POS transactions`;
 
             return (

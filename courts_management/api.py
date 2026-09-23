@@ -535,7 +535,6 @@ def get_dashboard_data():
         FROM `tabSales Invoice`
         WHERE docstatus = 1
         ORDER BY posting_date DESC, name DESC
-        LIMIT 100
     """, as_dict=True)
 
     recent_purchase_invoices = frappe.db.sql("""
@@ -543,7 +542,6 @@ def get_dashboard_data():
         FROM `tabPurchase Invoice`
         WHERE docstatus = 1
         ORDER BY posting_date DESC, name DESC
-        LIMIT 100
     """, as_dict=True)
 
     # Fetch complete active bins (up to 1000 items) so all warehouses have drilldown data
@@ -559,7 +557,7 @@ def get_dashboard_data():
         SELECT name, posting_date, account, party_type, party, against, debit, credit, voucher_type, voucher_no
         FROM `tabGL Entry`
         ORDER BY posting_date DESC, name DESC
-        LIMIT 100
+        LIMIT 1000
     """, as_dict=True)
 
     filter_warehouses = ["All Warehouses"] + [w["name"] for w in warehouses_list]
@@ -669,6 +667,12 @@ def get_dashboard_data():
             "roles": user_roles,
         },
         "userRoles": user_roles,
+        "counts": {
+            "salesInvoices": total_invoices,
+            "purchaseInvoices": total_purchases_count,
+            "bins": total_bins_count,
+            "glEntries": frappe.db.count("GL Entry"),
+        },
         "source": {
             "type": "erpnext",
             "url": frappe.utils.get_url(),
