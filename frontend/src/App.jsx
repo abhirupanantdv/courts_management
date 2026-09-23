@@ -4,6 +4,7 @@ import { CommandCentre } from './components/commandCentre/CommandCentre.jsx';
 import { LoginRequired } from './components/auth/LoginRequired.jsx';
 import { getErpNextDashboardData } from './api/dashboardApi.js';
 import { getLoggedInUser, loginToErpNext, logoutFromErpNext } from './api/erpnextClient.js';
+import { canAccessModule } from './utils/rolePermissions.js';
 
 export default function App() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -110,8 +111,18 @@ export default function App() {
     }
   };
 
+  const userRoles = dashboardData?.userRoles || dashboardData?.user?.roles || [];
+
+  // Guard active page if user roles change or do not permit the current module
+  useEffect(() => {
+    if (dashboardData && !canAccessModule(userRoles, activePage)) {
+      setActivePage('dashboard');
+    }
+  }, [dashboardData, userRoles, activePage]);
+
   const handleNavigate = (page, options = {}) => {
-    setActivePage(page);
+    const targetPage = canAccessModule(userRoles, page) ? page : 'dashboard';
+    setActivePage(targetPage);
     setActiveReportId(options.reportId || null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

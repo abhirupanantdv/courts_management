@@ -508,12 +508,6 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
                       <strong>{formatNumber(activeDrilldownWarehouse.stockUnits)} Units</strong>
                     </div>
                     <div className="drilldown-hero-stat">
-                      <small>Stock Health</small>
-                      <strong style={{ color: '#059669' }}>
-                        {Math.min(100, Math.max(0, activeDrilldownWarehouse.stockHealth ?? 95))}/100
-                      </strong>
-                    </div>
-                    <div className="drilldown-hero-stat">
                       <small>Network Share</small>
                       <strong style={{ color: '#16a34a' }}>{activeDrilldownWarehouse.salesShare}%</strong>
                     </div>

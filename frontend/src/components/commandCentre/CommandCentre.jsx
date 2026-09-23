@@ -16,6 +16,7 @@ import { PurchasesPage } from '../purchases/PurchasesPage.jsx';
 import { FinancePage } from '../finance/FinancePage.jsx';
 import { ReportsPage } from '../reports/ReportsPage.jsx';
 import { SalesPerformanceLeaderboard } from '../sales/SalesPerformanceLeaderboard.jsx';
+import { canAccessModule } from '../../utils/rolePermissions.js';
 
 export function CommandCentre({
   data,
@@ -75,22 +76,24 @@ export function CommandCentre({
     }
   };
 
-  if (activePage === 'salesInventory') {
+  const userRoles = data?.userRoles || data?.user?.roles || [];
+
+  if (activePage === 'salesInventory' && canAccessModule(userRoles, 'salesInventory')) {
     return <SalesInventoryPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'sales') {
+  if (activePage === 'sales' && canAccessModule(userRoles, 'sales')) {
     return <SalesPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'inventory') {
+  if (activePage === 'inventory' && canAccessModule(userRoles, 'inventory')) {
     return <InventoryPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'purchases') {
+  if (activePage === 'purchases' && canAccessModule(userRoles, 'purchases')) {
     return <PurchasesPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'finance') {
+  if (activePage === 'finance' && canAccessModule(userRoles, 'finance')) {
     return <FinancePage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'reports') {
+  if (activePage === 'reports' && canAccessModule(userRoles, 'reports')) {
     return <ReportsPage data={data} onNavigate={onNavigate} initialReportId={activeReportId} />;
   }
 

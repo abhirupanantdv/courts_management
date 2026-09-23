@@ -25,8 +25,10 @@ import {
 } from 'lucide-react';
 import { MoneyAmount } from '../common/MoneyAmount.jsx';
 import { formatNumber } from '../../utils/formatters.js';
+import { canAccessReport } from '../../utils/rolePermissions.js';
 
 export function ReportsPage({ data, onNavigate, initialReportId = null }) {
+  const userRoles = data?.userRoles || data?.user?.roles || [];
   const [openedReportId, setOpenedReportId] = useState(initialReportId || null);
   const [activeReportId, setActiveReportId] = useState(initialReportId || 'sales-register');
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,7 +141,24 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
     },
   ];
 
-  const activeReport = reportDefinitions.find((r) => r.id === activeReportId) || reportDefinitions[0];
+  // Role-Based Access Control: filter catalog to reports the user's ERPNext roles authorize
+  const permittedReports = useMemo(() => {
+    return reportDefinitions.filter((r) => canAccessReport(userRoles, r.id));
+  }, [reportDefinitions, userRoles]);
+
+  const effectiveReports = permittedReports.length > 0 ? permittedReports : reportDefinitions;
+
+  // Gracefully synchronize active report if unauthorized report was previously selected
+  useEffect(() => {
+    if (effectiveReports.length > 0 && !effectiveReports.some((r) => r.id === activeReportId)) {
+      setActiveReportId(effectiveReports[0].id);
+      if (openedReportId) {
+        setOpenedReportId(effectiveReports[0].id);
+      }
+    }
+  }, [effectiveReports, activeReportId, openedReportId]);
+
+  const activeReport = effectiveReports.find((r) => r.id === activeReportId) || effectiveReports[0];
 
   // Trigger Execution
   const handleExecuteReport = () => {
@@ -167,22 +186,26 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
     setIsExecuted(false);
   };
 
-  // Report 1: Sales Register Rows
+  // Report 1: Sales Register Rows with Authentic ERPNext Columns
   const salesRegisterRows = useMemo(() => {
     return salesInvoices.filter((inv) => {
       const matchSearch =
         inv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (inv.customer || '').toLowerCase().includes(searchQuery.toLowerCase());
+        (inv.customer || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (inv.customer_name || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchStatus = statusFilter === 'All' || inv.status === statusFilter;
       return matchSearch && matchStatus;
     });
   }, [salesInvoices, searchQuery, statusFilter]);
 
-  // Report 2: Stock Balance Rows
+  // Report 2: Stock Balance Rows with Authentic ERPNext Item and Valuation Data
   const stockBalanceRows = useMemo(() => {
     return bins
       .filter((bin) => {
-        const meta = itemMap.get(bin.item_code) || { name: bin.item_code, group: 'Merchandise' };
+        const meta = itemMap.get(bin.item_code) || { 
+          name: bin.item_name || bin.item_code, 
+          group: bin.item_group || 'Merchandise' 
+        };
         const matchSearch =
           bin.item_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
           meta.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -190,28 +213,34 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
         return matchSearch && matchWarehouse;
       })
       .map((bin) => {
-        const meta = itemMap.get(bin.item_code) || { name: bin.item_code, group: 'Merchandise' };
+        const meta = itemMap.get(bin.item_code) || { 
+          name: bin.item_name || bin.item_code, 
+          group: bin.item_group || 'Merchandise' 
+        };
         const qty = Number(bin.actual_qty || 0);
         const val = Number(bin.stock_value || 0);
+        const rate = Number(bin.valuation_rate || (qty > 0 ? val / qty : 0));
         return {
           code: bin.item_code,
           name: meta.name,
           group: meta.group,
           warehouse: bin.warehouse,
           qty,
-          rate: qty > 0 ? val / qty : 0,
+          rate,
           value: val,
           projected: Number(bin.projected_qty || 0),
         };
       });
   }, [bins, itemMap, searchQuery, warehouseFilter]);
 
-  // Report 3: Purchase Register Rows
+  // Report 3: Purchase Register Rows with Authentic ERPNext Columns
   const purchaseRegisterRows = useMemo(() => {
     return purchaseInvoices.filter((inv) => {
       const matchSearch =
         inv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (inv.supplier || '').toLowerCase().includes(searchQuery.toLowerCase());
+        (inv.supplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (inv.supplier_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (inv.bill_no || '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchStatus = statusFilter === 'All' || inv.status === statusFilter;
       return matchSearch && matchStatus;
     });
@@ -296,20 +325,20 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
     let filename = `${activeReport.id}.csv`;
 
     if (activeReport.id === 'sales-register') {
-      headers = ['Invoice ID', 'Date', 'Customer', 'Status', 'Grand Total (PGK)'];
-      rows = salesRegisterRows.map((r) => [r.name, r.posting_date, `"${r.customer}"`, r.status, r.grand_total]);
+      headers = ['Invoice ID', 'Posting Date', 'Customer Name', 'Due Date', 'Net Total (PGK)', 'Taxes (PGK)', 'Grand Total (PGK)', 'Outstanding (PGK)', 'Status'];
+      rows = salesRegisterRows.map((r) => [r.name, r.posting_date, `"${r.customer_name || r.customer}"`, r.due_date || '', r.net_total || r.grand_total, r.total_taxes_and_charges || 0, r.grand_total, r.outstanding_amount || 0, r.status]);
     } else if (activeReport.id === 'stock-balance') {
-      headers = ['Item Code', 'Product Name', 'Category', 'Warehouse', 'Stock Qty', 'Valuation Rate', 'Total Value'];
-      rows = stockBalanceRows.map((r) => [r.code, `"${r.name}"`, `"${r.group}"`, `"${r.warehouse}"`, r.qty, r.rate.toFixed(2), r.value.toFixed(2)]);
+      headers = ['Item Code', 'Product Name', 'Category', 'Warehouse', 'Stock Qty', 'Valuation Rate', 'Total Value', 'Projected Qty'];
+      rows = stockBalanceRows.map((r) => [r.code, `"${r.name}"`, `"${r.group}"`, `"${r.warehouse}"`, r.qty, r.rate.toFixed(2), r.value.toFixed(2), r.projected]);
     } else if (activeReport.id === 'purchase-register') {
-      headers = ['Purchase Invoice ID', 'Date', 'Supplier', 'Status', 'Grand Total (PGK)'];
-      rows = purchaseRegisterRows.map((r) => [r.name, r.posting_date, `"${r.supplier}"`, r.status, r.grand_total]);
+      headers = ['Purchase Invoice ID', 'Posting Date', 'Supplier Name', 'Bill No', 'Due Date', 'Net Total (PGK)', 'Taxes (PGK)', 'Grand Total (PGK)', 'Outstanding (PGK)', 'Status'];
+      rows = purchaseRegisterRows.map((r) => [r.name, r.posting_date, `"${r.supplier_name || r.supplier}"`, `"${r.bill_no || ''}"`, r.due_date || '', r.net_total || r.grand_total, r.total_taxes_and_charges || 0, r.grand_total, r.outstanding_amount || 0, r.status]);
     } else if (activeReport.id === 'store-matrix') {
       headers = ['Warehouse', 'Company', 'Active SKUs', 'Stock Units', 'Stock Value', 'Status'];
       rows = storeMatrixRows.map((r) => [`"${r.name}"`, `"${r.company}"`, r.skus, r.units, r.stockValue.toFixed(2), r.status]);
     } else if (activeReport.id === 'general-ledger') {
-      headers = ['Posting Date', 'Account', 'Party', 'Voucher', 'Debit (PGK)', 'Credit (PGK)'];
-      rows = glEntries.map((r) => [r.posting_date, `"${r.account}"`, `"${r.party || ''}"`, r.voucher_no || r.voucher_type, r.debit || 0, r.credit || 0]);
+      headers = ['Posting Date', 'Account', 'Party', 'Voucher Type', 'Voucher No', 'Against Account', 'Debit (PGK)', 'Credit (PGK)'];
+      rows = glEntries.map((r) => [r.posting_date, `"${r.account}"`, `"${r.party || ''}"`, `"${r.voucher_type || ''}"`, `"${r.voucher_no || ''}"`, `"${r.against || ''}"`, r.debit || 0, r.credit || 0]);
     } else if (activeReport.id === 'salesman-pos-register') {
       headers = ['POS Profile', 'Posting Date', 'POS Invoice', 'Customer', 'Cashier', 'Sales Person', 'Grand Total', 'Paid Amount', 'Payment Method', 'Is Return', 'Company'];
       rows = salesmanPosRegisterRows.map((r) => [
@@ -361,45 +390,53 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
           </div>
         </div>
 
-        {/* Directory Highlights */}
+        {/* Directory Highlights (Role-Gated) */}
         <div className="module-kpis-grid">
-          <div className="module-kpi-card">
-            <span className="kpi-icon is-green"><ShoppingCart size={22} /></span>
-            <div>
-              <p>Sales Invoices</p>
-              <strong>{formatNumber(salesInvoices.length)} Records</strong>
-              <small>Customer retail ledger</small>
+          {canAccessReport(userRoles, 'sales-register') && (
+            <div className="module-kpi-card">
+              <span className="kpi-icon is-green"><ShoppingCart size={22} /></span>
+              <div>
+                <p>Sales Invoices</p>
+                <strong>{formatNumber(salesInvoices.length)} Records</strong>
+                <small>Customer retail ledger</small>
+              </div>
             </div>
-          </div>
-          <div className="module-kpi-card">
-            <span className="kpi-icon is-teal"><Boxes size={22} /></span>
-            <div>
-              <p>Stock Valuation</p>
-              <strong>{formatNumber(bins.length)} Tracked Bins</strong>
-              <small>Warehouse balances</small>
+          )}
+          {canAccessReport(userRoles, 'stock-balance') && (
+            <div className="module-kpi-card">
+              <span className="kpi-icon is-teal"><Boxes size={22} /></span>
+              <div>
+                <p>Stock Valuation</p>
+                <strong>{formatNumber(bins.length)} Tracked Bins</strong>
+                <small>Warehouse balances</small>
+              </div>
             </div>
-          </div>
-          <div className="module-kpi-card">
-            <span className="kpi-icon is-amber"><Truck size={22} /></span>
-            <div>
-              <p>Supplier Accounts</p>
-              <strong>{formatNumber(purchaseInvoices.length)} Bills</strong>
-              <small>Procurement expenditures</small>
+          )}
+          {canAccessReport(userRoles, 'purchase-register') && (
+            <div className="module-kpi-card">
+              <span className="kpi-icon is-amber"><Truck size={22} /></span>
+              <div>
+                <p>Supplier Accounts</p>
+                <strong>{formatNumber(purchaseInvoices.length)} Bills</strong>
+                <small>Procurement expenditures</small>
+              </div>
             </div>
-          </div>
-          <div className="module-kpi-card">
-            <span className="kpi-icon is-purple"><Store size={22} /></span>
-            <div>
-              <p>Branch Network</p>
-              <strong>{formatNumber(warehousesList.length || 4)} Stores</strong>
-              <small>Multi-location performance</small>
+          )}
+          {canAccessReport(userRoles, 'store-matrix') && (
+            <div className="module-kpi-card">
+              <span className="kpi-icon is-purple"><Store size={22} /></span>
+              <div>
+                <p>Branch Network</p>
+                <strong>{formatNumber(warehousesList.length || 4)} Stores</strong>
+                <small>Multi-location performance</small>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Report Cards Grid */}
+        {/* Report Cards Grid (Filtered to Authorized Reports) */}
         <div className="report-cards-grid">
-          {reportDefinitions.map((report) => {
+          {effectiveReports.map((report) => {
             const Icon = report.icon;
             let statText = '';
             if (report.id === 'sales-register') statText = `${formatNumber(salesInvoices.length)} live customer invoices`;
@@ -499,9 +536,9 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
         </div>
       </div>
 
-      {/* Report Selector Tabs */}
+      {/* Report Selector Tabs (Filtered to Authorized Reports) */}
       <div className="reports-catalog-bar">
-        {reportDefinitions.map((report) => {
+        {effectiveReports.map((report) => {
           const Icon = report.icon;
           const isActive = report.id === activeReportId;
           return (
@@ -814,9 +851,13 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                     <tr>
                       <th>Invoice ID</th>
                       <th>Posting Date</th>
-                      <th>Customer Account</th>
-                      <th style={{ textAlign: 'center' }}>Status</th>
+                      <th>Customer Name</th>
+                      <th>Due Date</th>
+                      <th style={{ textAlign: 'right' }}>Net Total</th>
+                      <th style={{ textAlign: 'right' }}>Taxes</th>
                       <th style={{ textAlign: 'right' }}>Grand Total</th>
+                      <th style={{ textAlign: 'right' }}>Outstanding</th>
+                      <th style={{ textAlign: 'center' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -824,18 +865,28 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                       salesRegisterRows.slice(0, visibleCount).map((inv) => (
                         <tr key={inv.name}>
                           <td><code className="record-code">{inv.name}</code></td>
-                          <td>{inv.posting_date}</td>
-                          <td><strong>{inv.customer}</strong></td>
-                          <td style={{ textAlign: 'center' }}>
-                            <span className={`status-badge is-${inv.status.toLowerCase()}`}>{inv.status}</span>
+                          <td style={{ whiteSpace: 'nowrap' }}>{inv.posting_date}</td>
+                          <td><strong>{inv.customer_name || inv.customer}</strong></td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{inv.due_date || '—'}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <MoneyAmount value={inv.net_total || inv.grand_total} />
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <MoneyAmount value={inv.total_taxes_and_charges || 0} />
                           </td>
                           <td style={{ textAlign: 'right' }} className="money-cell">
-                            <MoneyAmount value={inv.grand_total} />
+                            <strong><MoneyAmount value={inv.grand_total} /></strong>
+                          </td>
+                          <td style={{ textAlign: 'right', color: Number(inv.outstanding_amount) > 0 ? '#dc2626' : '#15803d' }}>
+                            <MoneyAmount value={inv.outstanding_amount || 0} />
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`status-badge is-${(inv.status || 'paid').toLowerCase()}`}>{inv.status}</span>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan="5" className="empty-row">No sales invoices found matching filters.</td></tr>
+                      <tr><td colSpan="9" className="empty-row">No sales invoices found matching filters.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -869,10 +920,11 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                     <tr>
                       <th>Item Code</th>
                       <th>Product Description</th>
+                      <th>Category</th>
                       <th>Warehouse</th>
                       <th style={{ textAlign: 'right' }}>In-Stock Qty</th>
                       <th style={{ textAlign: 'right' }}>Valuation Rate</th>
-                      <th style={{ textAlign: 'right' }}>Total Valuation</th>
+                      <th style={{ textAlign: 'right' }}>Balance Value</th>
                       <th style={{ textAlign: 'right' }}>Projected Qty</th>
                     </tr>
                   </thead>
@@ -882,6 +934,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                         <tr key={`${row.code}-${row.warehouse}`}>
                           <td><code className="record-code">{row.code}</code></td>
                           <td><strong>{row.name}</strong></td>
+                          <td><span className="category-chip">{row.group}</span></td>
                           <td>{row.warehouse}</td>
                           <td style={{ textAlign: 'right' }}><strong>{formatNumber(row.qty)}</strong></td>
                           <td style={{ textAlign: 'right' }}><MoneyAmount value={row.rate} /></td>
@@ -890,7 +943,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan="7" className="empty-row">No stock records found matching filters.</td></tr>
+                      <tr><td colSpan="8" className="empty-row">No stock records found matching filters.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -924,9 +977,14 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                     <tr>
                       <th>Invoice ID</th>
                       <th>Posting Date</th>
-                      <th>Supplier Account</th>
+                      <th>Supplier Name</th>
+                      <th>Bill / Ref No</th>
+                      <th>Due Date</th>
+                      <th style={{ textAlign: 'right' }}>Net Total</th>
+                      <th style={{ textAlign: 'right' }}>Taxes</th>
+                      <th style={{ textAlign: 'right' }}>Grand Total</th>
+                      <th style={{ textAlign: 'right' }}>Outstanding</th>
                       <th style={{ textAlign: 'center' }}>Status</th>
-                      <th style={{ textAlign: 'right' }}>Net Amount</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -934,18 +992,29 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                       purchaseRegisterRows.slice(0, visibleCount).map((inv) => (
                         <tr key={inv.name}>
                           <td><code className="record-code">{inv.name}</code></td>
-                          <td>{inv.posting_date}</td>
-                          <td><strong>{inv.supplier}</strong></td>
-                          <td style={{ textAlign: 'center' }}>
-                            <span className={`status-badge is-${inv.status.toLowerCase()}`}>{inv.status}</span>
+                          <td style={{ whiteSpace: 'nowrap' }}>{inv.posting_date}</td>
+                          <td><strong>{inv.supplier_name || inv.supplier}</strong></td>
+                          <td><span className="category-chip">{inv.bill_no || '—'}</span></td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{inv.due_date || '—'}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <MoneyAmount value={inv.net_total || inv.grand_total} />
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <MoneyAmount value={inv.total_taxes_and_charges || 0} />
                           </td>
                           <td style={{ textAlign: 'right' }} className="money-cell">
-                            <MoneyAmount value={inv.grand_total} />
+                            <strong><MoneyAmount value={inv.grand_total} /></strong>
+                          </td>
+                          <td style={{ textAlign: 'right', color: Number(inv.outstanding_amount) > 0 ? '#dc2626' : '#15803d' }}>
+                            <MoneyAmount value={inv.outstanding_amount || 0} />
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`status-badge is-${(inv.status || 'paid').toLowerCase()}`}>{inv.status}</span>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan="5" className="empty-row">No purchase records found matching filters.</td></tr>
+                      <tr><td colSpan="10" className="empty-row">No purchase records found matching filters.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1086,7 +1155,8 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                       <th>Posting Date</th>
                       <th>Account Code</th>
                       <th>Party</th>
-                      <th>Voucher</th>
+                      <th>Voucher Type & No</th>
+                      <th>Against Account</th>
                       <th style={{ textAlign: 'right' }}>Debit (PGK)</th>
                       <th style={{ textAlign: 'right' }}>Credit (PGK)</th>
                     </tr>
@@ -1095,10 +1165,11 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                     {glEntries.length ? (
                       glEntries.slice(0, visibleCount).map((row, idx) => (
                         <tr key={`${row.name || idx}`}>
-                          <td>{row.posting_date}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{row.posting_date}</td>
                           <td><code>{row.account}</code></td>
                           <td>{row.party || '—'}</td>
-                          <td><span className="category-chip">{row.voucher_no || row.voucher_type}</span></td>
+                          <td><span className="category-chip">{row.voucher_type ? `${row.voucher_type} ` : ''}{row.voucher_no || ''}</span></td>
+                          <td style={{ fontSize: '0.82rem', color: '#64748b' }}>{row.against || '—'}</td>
                           <td style={{ textAlign: 'right' }} className="money-cell">
                             {row.debit > 0 ? <MoneyAmount value={row.debit} /> : '—'}
                           </td>
@@ -1108,7 +1179,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan="6" className="empty-row">No general ledger entries found in live system.</td></tr>
+                      <tr><td colSpan="7" className="empty-row">No general ledger entries found in live system.</td></tr>
                     )}
                   </tbody>
                 </table>

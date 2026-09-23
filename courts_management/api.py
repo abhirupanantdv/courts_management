@@ -529,9 +529,9 @@ def get_dashboard_data():
             "onHandStock": flt(r.on_hand_stock),
         })
 
-    # 13. Recent Invoices for Cart Reports
+    # 13. Recent Invoices for Cart Reports with Authentic ERPNext Fields
     recent_sales_invoices = frappe.db.sql("""
-        SELECT name, customer, grand_total, posting_date, company, status, due_date
+        SELECT name, customer, customer_name, grand_total, net_total, total_taxes_and_charges, outstanding_amount, posting_date, company, status, due_date, currency
         FROM `tabSales Invoice`
         WHERE docstatus = 1
         ORDER BY posting_date DESC, name DESC
@@ -539,7 +539,7 @@ def get_dashboard_data():
     """, as_dict=True)
 
     recent_purchase_invoices = frappe.db.sql("""
-        SELECT name, supplier, grand_total, posting_date, company, status, due_date
+        SELECT name, supplier, supplier_name, bill_no, grand_total, net_total, total_taxes_and_charges, outstanding_amount, posting_date, company, status, due_date, currency
         FROM `tabPurchase Invoice`
         WHERE docstatus = 1
         ORDER BY posting_date DESC, name DESC
@@ -548,7 +548,7 @@ def get_dashboard_data():
 
     # Fetch complete active bins (up to 1000 items) so all warehouses have drilldown data
     recent_bins = frappe.db.sql("""
-        SELECT b.name, b.item_code, COALESCE(i.item_name, b.item_code) as item_name, b.warehouse, b.actual_qty, b.stock_value, b.reserved_qty, b.projected_qty
+        SELECT b.name, b.item_code, COALESCE(i.item_name, b.item_code) as item_name, COALESCE(i.item_group, 'Merchandise') as item_group, b.warehouse, b.actual_qty, b.stock_value, b.valuation_rate, b.reserved_qty, b.projected_qty
         FROM `tabBin` b
         LEFT JOIN `tabItem` i ON i.name = b.item_code
         ORDER BY b.warehouse ASC, b.stock_value DESC
@@ -556,7 +556,7 @@ def get_dashboard_data():
     """, as_dict=True)
 
     recent_gl = frappe.db.sql("""
-        SELECT name, posting_date, account, party, debit, credit, voucher_type, voucher_no
+        SELECT name, posting_date, account, party_type, party, against, debit, credit, voucher_type, voucher_no
         FROM `tabGL Entry`
         ORDER BY posting_date DESC, name DESC
         LIMIT 100
@@ -658,7 +658,17 @@ def get_dashboard_data():
             "stockHealth": stock_health,
         })
 
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user) if user and user != "Guest" else []
+    user_fullname = frappe.utils.get_fullname(user) if user and user != "Guest" else "User"
+
     return {
+        "user": {
+            "email": user,
+            "fullName": user_fullname,
+            "roles": user_roles,
+        },
+        "userRoles": user_roles,
         "source": {
             "type": "erpnext",
             "url": frappe.utils.get_url(),
@@ -716,9 +726,19 @@ def get_dashboard_data():
     }
 
 @frappe.whitelist()
+def get_user_roles():
+    """
+    Returns the role names assigned to the currently authenticated Frappe user.
+    """
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return []
+    return frappe.get_roles(user)
+
+@frappe.whitelist()
 def get_report_rows(report_id, start=0, limit=20, filters=None):
     """
-    Paginated server-side query endpoint for the 7 Courts cart reports.
+    Paginated server-side query endpoint for the Courts reports.
     Balanced database execution with offset & limit.
     """
     start = int(start or 0)
@@ -726,7 +746,7 @@ def get_report_rows(report_id, start=0, limit=20, filters=None):
 
     if report_id == "sales-register":
         rows = frappe.db.sql("""
-            SELECT name, customer, grand_total, posting_date, company, status, due_date
+            SELECT name, customer, customer_name, grand_total, net_total, total_taxes_and_charges, outstanding_amount, posting_date, company, status, due_date, currency
             FROM `tabSales Invoice`
             WHERE docstatus = 1
             ORDER BY posting_date DESC, name DESC
@@ -737,7 +757,7 @@ def get_report_rows(report_id, start=0, limit=20, filters=None):
 
     elif report_id == "purchase-register":
         rows = frappe.db.sql("""
-            SELECT name, supplier, grand_total, posting_date, company, status, due_date
+            SELECT name, supplier, supplier_name, bill_no, grand_total, net_total, total_taxes_and_charges, outstanding_amount, posting_date, company, status, due_date, currency
             FROM `tabPurchase Invoice`
             WHERE docstatus = 1
             ORDER BY posting_date DESC, name DESC
@@ -748,7 +768,7 @@ def get_report_rows(report_id, start=0, limit=20, filters=None):
 
     elif report_id == "stock-balance":
         rows = frappe.db.sql("""
-            SELECT b.name, b.item_code, i.item_name, b.warehouse, b.actual_qty, b.stock_value, b.reserved_qty
+            SELECT b.name, b.item_code, COALESCE(i.item_name, b.item_code) as item_name, COALESCE(i.item_group, 'Merchandise') as item_group, b.warehouse, b.actual_qty, b.stock_value, b.valuation_rate, b.reserved_qty, b.projected_qty
             FROM `tabBin` b
             LEFT JOIN `tabItem` i ON i.name = b.item_code
             ORDER BY b.stock_value DESC
@@ -759,7 +779,7 @@ def get_report_rows(report_id, start=0, limit=20, filters=None):
 
     elif report_id == "general-ledger":
         rows = frappe.db.sql("""
-            SELECT name, posting_date, account, party, debit, credit, voucher_type, voucher_no
+            SELECT name, posting_date, account, party_type, party, against, debit, credit, voucher_type, voucher_no
             FROM `tabGL Entry`
             ORDER BY posting_date DESC, name DESC
             LIMIT %s OFFSET %s

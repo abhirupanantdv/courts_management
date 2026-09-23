@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { erpNextRoutes, redirectToErpNext } from '../../utils/erpnextRoutes.js';
+import { canAccessModule } from '../../utils/rolePermissions.js';
 
 const nav = [
   { label: 'Dashboard', icon: Home, page: 'dashboard' },
@@ -36,6 +37,10 @@ export function Header({
   isLoginOpen: controlledLoginOpen,
   onToggleLogin,
 }) {
+  const userRoles = data?.userRoles || data?.user?.roles || [];
+  const permittedNav = nav.filter((item) => canAccessModule(userRoles, item.page));
+  const effectiveNav = permittedNav.length > 0 ? permittedNav : nav;
+
   const [internalLoginOpen, setInternalLoginOpen] = useState(false);
   const isLoginOpen = controlledLoginOpen !== undefined ? controlledLoginOpen : internalLoginOpen;
   const setIsLoginOpen = onToggleLogin || setInternalLoginOpen;
@@ -68,7 +73,7 @@ export function Header({
         </button>
 
         <nav className="topnav__links" aria-label="Primary navigation">
-          {nav.map((item) => {
+          {effectiveNav.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -110,6 +115,7 @@ export function Header({
             {isLoginOpen ? (
               <UserProfileDropdown
                 auth={auth}
+                userRoles={userRoles}
                 isLoading={isLoading}
                 onLogout={onLogout}
               />
@@ -120,7 +126,7 @@ export function Header({
 
       {isMobileMenuOpen ? (
         <div className="mobile-nav-panel">
-          {nav.map((item) => {
+          {effectiveNav.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -156,6 +162,7 @@ export function Header({
       {isLoginOpen ? (
         <UserProfileDropdown
           auth={auth}
+          userRoles={userRoles}
           className="login-dropdown--mobile"
           isLoading={isLoading}
           onLogout={onLogout}
@@ -167,15 +174,22 @@ export function Header({
 
 function UserProfileDropdown({
   auth,
+  userRoles = [],
   className = '',
   isLoading,
   onLogout,
 }) {
+  const displayRole = userRoles.length > 0 
+    ? userRoles.find((r) => !['All', 'Guest', 'Desk User'].includes(r)) || userRoles[0]
+    : 'Authorized Staff';
+
   return (
     <div className={`login-dropdown ${className}`}>
       <div className="login-dropdown__header">
-        <strong>Courts Dashboard</strong>
-        <span>Active Session</span>
+        <strong>Courts ERPNext</strong>
+        <span className="category-chip" style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#1d4ed8' }}>
+          {displayRole}
+        </span>
       </div>
 
       <div className="login-status">
