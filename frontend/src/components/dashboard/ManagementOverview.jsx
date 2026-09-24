@@ -30,21 +30,19 @@ export function ManagementOverview({ cards = [], data = {} }) {
               className={`management-card ${isPermitted ? '' : 'is-restricted'}`}
               key={card.label}
             >
-              <div className="management-card__inner">
-                <span className={`management-card__icon is-${card.tone}`}>
-                  <Icon size={24} />
-                </span>
-                <div>
-                  <p>{card.label.toUpperCase()}</p>
-                  <strong>
-                    {card.isCurrency && card.rawValue !== undefined ? (
-                      <MoneyAmount value={card.rawValue} />
-                    ) : (
-                      card.value
-                    )}
-                  </strong>
-                  <small>{card.description}</small>
-                </div>
+              <span className={`management-card__icon is-${card.tone}`}>
+                <Icon size={24} />
+              </span>
+              <div>
+                <p>{card.label.toUpperCase()}</p>
+                <strong>
+                  {card.isCurrency && card.rawValue !== undefined ? (
+                    <MoneyAmount value={card.rawValue} />
+                  ) : (
+                    card.value
+                  )}
+                </strong>
+                <small>{card.description}</small>
               </div>
 
               {!isPermitted && (

@@ -7206,7 +7206,7 @@ td {
   overflow: hidden;
 }
 
-.management-card.is-restricted .management-card__inner {
+.management-card.is-restricted > *:not(.management-card-restricted-overlay) {
   filter: blur(5px) opacity(0.28);
   pointer-events: none;
   user-select: none;
@@ -7236,7 +7236,7 @@ td {
   overflow: hidden;
 }
 
-.overview-card.is-restricted .overview-card__inner {
+.overview-card.is-restricted > *:not(.overview-card-restricted-overlay) {
   filter: blur(6px) opacity(0.3);
   pointer-events: none;
   user-select: none;

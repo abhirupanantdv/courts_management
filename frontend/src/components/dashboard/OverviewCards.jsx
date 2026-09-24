@@ -60,16 +60,24 @@ export function OverviewCards({ data, isRefreshing, onRefresh, onNavigate }) {
             className={`overview-card ${isPermitted ? '' : 'is-restricted'}`}
             key={card.key}
           >
-            <div className="overview-card__inner">
-              <span className={`overview-card__icon is-${card.tone}`}>
-                <Icon size={34} />
-              </span>
-              <div>
-                <p>{card.label}</p>
-                <strong>{card.renderValue ? card.renderValue(data) : card.getValue(data)}</strong>
-                <small>{card.note}</small>
-              </div>
+            <span className={`overview-card__icon is-${card.tone}`}>
+              <Icon size={34} />
+            </span>
+            <div>
+              <p>{card.label}</p>
+              <strong>{card.renderValue ? card.renderValue(data) : card.getValue(data)}</strong>
+              <small>{card.note}</small>
             </div>
+
+            {isPermitted && index === 1 ? (
+              <button className="round-action" aria-label="Refresh dashboard data" onClick={onRefresh}>
+                <RefreshCw size={18} className={isRefreshing ? 'is-spinning' : ''} />
+              </button>
+            ) : isPermitted && index === 2 ? (
+              <button className="round-action" aria-label="View warehouses in Command Centre" onClick={() => onNavigate && onNavigate('salesInventory')}>→</button>
+            ) : (
+              <span className="overview-card__spacer" />
+            )}
 
             {!isPermitted && (
               <div
@@ -80,14 +88,6 @@ export function OverviewCards({ data, isRefreshing, onRefresh, onNavigate }) {
                 <span>Restricted</span>
               </div>
             )}
-
-            {isPermitted && index === 1 ? (
-              <button className="round-action" aria-label="Refresh dashboard data" onClick={onRefresh}>
-                <RefreshCw size={18} className={isRefreshing ? 'is-spinning' : ''} />
-              </button>
-            ) : isPermitted && index === 2 ? (
-              <button className="round-action" aria-label="View warehouses in Command Centre" onClick={() => onNavigate && onNavigate('salesInventory')}>→</button>
-            ) : null}
           </article>
         );
       })}
