@@ -17,6 +17,7 @@ import { FinancePage } from '../finance/FinancePage.jsx';
 import { ReportsPage } from '../reports/ReportsPage.jsx';
 import { SalesPerformanceLeaderboard } from '../sales/SalesPerformanceLeaderboard.jsx';
 import { canAccessModule } from '../../utils/rolePermissions.js';
+import { PermissionGate } from '../common/PermissionGate.jsx';
 
 export function CommandCentre({
   data,
@@ -76,30 +77,76 @@ export function CommandCentre({
     }
   };
 
-  const userRoles = data?.userRoles || data?.user?.roles || [];
-  const permissions = data?.permissions;
+  const permissions = data?.doctypePermissions || data?.permissions;
+  const hasSalesAccess = canAccessModule(permissions, 'sales');
+  const hasInventoryAccess = canAccessModule(permissions, 'inventory');
 
-  if (activePage === 'salesInventory' && canAccessModule(userRoles, 'salesInventory', permissions)) {
-    return <SalesInventoryPage data={data} onNavigate={onNavigate} />;
+  if (activePage === 'salesInventory') {
+    return (
+      <PermissionGate
+        permitted={canAccessModule(permissions, 'salesInventory')}
+        doctype="Sales Invoice / Bin"
+        title="Sales vs Inventory Operations"
+      >
+        <SalesInventoryPage data={data} onNavigate={onNavigate} />
+      </PermissionGate>
+    );
   }
-  if (activePage === 'sales' && canAccessModule(userRoles, 'sales', permissions)) {
-    return <SalesPage data={data} onNavigate={onNavigate} />;
+  if (activePage === 'sales') {
+    return (
+      <PermissionGate
+        permitted={canAccessModule(permissions, 'sales')}
+        doctype="Sales Invoice"
+        title="Sales Analytics & Register"
+      >
+        <SalesPage data={data} onNavigate={onNavigate} />
+      </PermissionGate>
+    );
   }
-  if (activePage === 'inventory' && canAccessModule(userRoles, 'inventory', permissions)) {
-    return <InventoryPage data={data} onNavigate={onNavigate} />;
+  if (activePage === 'inventory') {
+    return (
+      <PermissionGate
+        permitted={canAccessModule(permissions, 'inventory')}
+        doctype="Bin / Item"
+        title="Inventory Valuation & Stock"
+      >
+        <InventoryPage data={data} onNavigate={onNavigate} />
+      </PermissionGate>
+    );
   }
-  if (activePage === 'purchases' && canAccessModule(userRoles, 'purchases', permissions)) {
-    return <PurchasesPage data={data} onNavigate={onNavigate} />;
+  if (activePage === 'purchases') {
+    return (
+      <PermissionGate
+        permitted={canAccessModule(permissions, 'purchases')}
+        doctype="Purchase Invoice"
+        title="Procurement & Purchases"
+      >
+        <PurchasesPage data={data} onNavigate={onNavigate} />
+      </PermissionGate>
+    );
   }
-  if (activePage === 'finance' && canAccessModule(userRoles, 'finance', permissions)) {
-    return <FinancePage data={data} onNavigate={onNavigate} />;
+  if (activePage === 'finance') {
+    return (
+      <PermissionGate
+        permitted={canAccessModule(permissions, 'finance')}
+        doctype="GL Entry / Account"
+        title="Financial Ledgers & Statements"
+      >
+        <FinancePage data={data} onNavigate={onNavigate} />
+      </PermissionGate>
+    );
   }
-  if (activePage === 'reports' && canAccessModule(userRoles, 'reports', permissions)) {
-    return <ReportsPage data={data} onNavigate={onNavigate} initialReportId={activeReportId} />;
+  if (activePage === 'reports') {
+    return (
+      <PermissionGate
+        permitted={canAccessModule(permissions, 'reports')}
+        doctype="Reports Access"
+        title="Reports Hub"
+      >
+        <ReportsPage data={data} onNavigate={onNavigate} initialReportId={activeReportId} />
+      </PermissionGate>
+    );
   }
-
-  const hasSalesAccess = canAccessModule(userRoles, 'sales', permissions);
-  const hasInventoryAccess = canAccessModule(userRoles, 'inventory', permissions);
 
   return (
     <main className="dashboard-main">
@@ -108,42 +155,76 @@ export function CommandCentre({
       <ManagementOverview cards={data.managementOverview} data={data} />
 
       {/* Modern Multi-Option Sales Intelligence Leaderboard (Warehouses & Items) */}
-      {hasSalesAccess && <SalesPerformanceLeaderboard data={data} onNavigate={onNavigate} />}
+      <PermissionGate
+        permitted={hasSalesAccess}
+        doctype="Sales Invoice"
+        title="Sales Performance Leaderboard"
+      >
+        <SalesPerformanceLeaderboard data={data} onNavigate={onNavigate} />
+      </PermissionGate>
 
       <section className="dashboard-grid dashboard-grid--top">
-        {hasSalesAccess && (
+        <PermissionGate
+          permitted={hasSalesAccess}
+          doctype="Sales Invoice"
+          title="Sales Trend Analytics"
+        >
           <SalesChart
             data={data.salesTrend}
             todayTotal={data.heroMetrics.salesToday}
             onNavigate={onNavigate}
           />
-        )}
-        {hasSalesAccess && (
+        </PermissionGate>
+
+        <PermissionGate
+          permitted={hasSalesAccess}
+          doctype="Sales Invoice"
+          title="Category Performance"
+        >
           <CategoryPerformanceCard
             categories={data.categorySales || []}
             onNavigate={onNavigate}
           />
-        )}
+        </PermissionGate>
+
         <QuickActions data={data} onNavigate={onNavigate} />
       </section>
 
-      {(hasSalesAccess || hasInventoryAccess) && (
-        <section className="dashboard-grid dashboard-grid--bottom">
+      <section className="dashboard-grid dashboard-grid--bottom">
+        <PermissionGate
+          permitted={hasInventoryAccess}
+          doctype="Warehouse"
+          title="Store Performance"
+        >
           <StorePerformance 
             stores={data.storePerformance} 
             selectedStore={selectedStore}
             onSelectStore={handleSelectStore}
             onNavigate={onNavigate} 
           />
+        </PermissionGate>
+
+        <PermissionGate
+          permitted={hasInventoryAccess}
+          doctype="Warehouse / Bin"
+          title="Store Inventory Details"
+        >
           <StoreDetails 
             data={data} 
             selectedStore={selectedStore}
             onSelectStore={setSelectedStore}
             onNavigate={onNavigate} 
           />
-          {hasSalesAccess && <ItemSalesRegisterByWarehouse data={data} onNavigate={onNavigate} />}
-        </section>
-      )}
+        </PermissionGate>
+
+        <PermissionGate
+          permitted={hasSalesAccess}
+          doctype="Sales Invoice"
+          title="Item Sales Register"
+        >
+          <ItemSalesRegisterByWarehouse data={data} onNavigate={onNavigate} />
+        </PermissionGate>
+      </section>
       <AppFooter />
     </main>
   );

@@ -1,6 +1,61 @@
 import frappe
 from frappe.utils import flt, getdate, nowdate, add_days, add_months
 
+def fmt(val):
+    try:
+        return f"PGK {flt(val):,.2f}"
+    except Exception:
+        return f"PGK {val}"
+
+@frappe.whitelist()
+def get_user_doctype_permissions(user=None):
+    """
+    Evaluates authentic ERPNext DocType permissions (read or select) for the user.
+    Pure Frappe dynamic resolution based on tabDocPerm / tabCustom DocPerm and assigned roles.
+    Zero hardcoded values or arbitrary group configurations.
+    """
+    if not user:
+        user = frappe.session.user
+
+    if not user or user == "Guest":
+        return {"isAdmin": False}
+
+    user_roles = frappe.get_roles(user)
+    is_admin = bool("Administrator" in user_roles or "System Manager" in user_roles)
+
+    core_doctypes = [
+        "Sales Invoice",
+        "POS Invoice",
+        "Purchase Invoice",
+        "Bin",
+        "Item",
+        "Warehouse",
+        "GL Entry",
+        "Account",
+        "Customer",
+        "Supplier",
+    ]
+
+    doctype_perms = {
+        "isAdmin": is_admin,
+    }
+
+    for dt in core_doctypes:
+        if is_admin:
+            doctype_perms[dt] = True
+        else:
+            can_read = frappe.has_permission(dt, "read", user=user)
+            can_select = frappe.has_permission(dt, "select", user=user)
+            doctype_perms[dt] = bool(can_read or can_select)
+
+    # Convenience flags for high-level module mapping
+    doctype_perms["sales"] = bool(doctype_perms.get("Sales Invoice") or doctype_perms.get("POS Invoice"))
+    doctype_perms["purchases"] = bool(doctype_perms.get("Purchase Invoice"))
+    doctype_perms["inventory"] = bool(doctype_perms.get("Bin") or doctype_perms.get("Item") or doctype_perms.get("Warehouse"))
+    doctype_perms["finance"] = bool(doctype_perms.get("GL Entry") or doctype_perms.get("Account"))
+
+    return doctype_perms
+
 @frappe.whitelist()
 def get_dashboard_data():
     """
@@ -657,480 +712,6 @@ def get_dashboard_data():
             "title": w.warehouse_name or w_name,
             "displayName": w_name.split(' - ')[0] if ' - ' in w_name else w_name,
             "code": w_name,
-            "status": "amber" if idx % 3 == 0 else ("green" if idx % 3 == 1 else "blue"),
-            "chartItems": chart_items,
-            "topMovement": top_movement,
-            "binCount": w.bin_count,
-            "totalStock": tot_stock,
-            "totalStockValue": tot_val,
-            "totalSalesUnits": int(tot_sales_units),
-            "totalSalesAmount": tot_sales_amt,
-            "coverageRatio": coverage_ratio,
-            "stockHealth": stock_health,
-        })
-
-@frappe.whitelist()
-def get_user_doctype_permissions(user=None):
-    """
-    Evaluates authentic ERPNext DocType permissions (read or select) for the user.
-    Pure Frappe dynamic resolution based on tabDocPerm / tabCustom DocPerm and assigned roles.
-    Zero hardcoded values or arbitrary group configurations.
-    """
-    if not user:
-        user = frappe.session.user
-
-    if not user or user == "Guest":
-        return {"isAdmin": False}
-
-    user_roles = frappe.get_roles(user)
-    is_admin = bool("Administrator" in user_roles or "System Manager" in user_roles)
-
-    core_doctypes = [
-        "Sales Invoice",
-        "POS Invoice",
-        "Purchase Invoice",
-        "Bin",
-        "Item",
-        "Warehouse",
-        "GL Entry",
-        "Account",
-        "Customer",
-        "Supplier",
-    ]
-
-    doctype_perms = {
-        "isAdmin": is_admin,
-    }
-
-    for dt in core_doctypes:
-        if is_admin:
-            doctype_perms[dt] = True
-        else:
-            can_read = frappe.has_permission(dt, "read", user=user)
-            can_select = frappe.has_permission(dt, "select", user=user)
-            doctype_perms[dt] = bool(can_read or can_select)
-
-    # Convenience flags for high-level module mapping
-    doctype_perms["sales"] = bool(doctype_perms.get("Sales Invoice") or doctype_perms.get("POS Invoice"))
-    doctype_perms["purchases"] = bool(doctype_perms.get("Purchase Invoice"))
-    doctype_perms["inventory"] = bool(doctype_perms.get("Bin") or doctype_perms.get("Item") or doctype_perms.get("Warehouse"))
-    doctype_perms["finance"] = bool(doctype_perms.get("GL Entry") or doctype_perms.get("Account"))
-
-    return doctype_perms
-
-
-@frappe.whitelist()
-def get_dashboard_data():
-    """
-    Main dashboard analytical data endpoint with dynamic ERPNext DocType permissions.
-    """
-    # 1. Date calculation
-    latest_inv_date = frappe.db.get_value("Sales Invoice", {"docstatus": 1}, "posting_date", order_by="posting_date desc")
-    if not latest_inv_date:
-        latest_inv_date = frappe.utils.today()
-    latest_dt = frappe.utils.getdate(latest_inv_date)
-    latest_yr = latest_dt.year
-    latest_mo = latest_dt.month
-
-    # 2. Key totals (balanced execution)
-    total_sales = frappe.db.sql("""
-        SELECT COALESCE(SUM(grand_total), 0) FROM `tabSales Invoice` WHERE docstatus = 1
-    """)[0][0] or 0.0
-
-    total_invoices = frappe.db.count("Sales Invoice", {"docstatus": 1})
-    total_purchase = frappe.db.sql("""
-        SELECT COALESCE(SUM(grand_total), 0) FROM `tabPurchase Invoice` WHERE docstatus = 1
-    """)[0][0] or 0.0
-
-    total_purchases_count = frappe.db.count("Purchase Invoice", {"docstatus": 1})
-    inventory_qty = frappe.db.sql("""
-        SELECT COALESCE(SUM(actual_qty), 0) FROM `tabBin` WHERE actual_qty > 0
-    """)[0][0] or 0.0
-
-    inventory_value = frappe.db.sql("""
-        SELECT COALESCE(SUM(stock_value), 0) FROM `tabBin` WHERE stock_value > 0
-    """)[0][0] or 0.0
-
-    total_bins_count = frappe.db.count("Bin")
-
-    # 3. Warehouses
-    warehouses_list = frappe.db.sql("""
-        SELECT name, warehouse_name, company, disabled
-        FROM `tabWarehouse`
-        WHERE is_group = 0 AND disabled = 0
-        ORDER BY warehouse_name ASC
-    """, as_dict=True)
-
-    filter_warehouses = ["All Stores"] + [w.warehouse_name or w.name for w in warehouses_list]
-
-    # 4. Sales today / latest day
-    sales_today = frappe.db.sql("""
-        SELECT COALESCE(SUM(grand_total), 0) FROM `tabSales Invoice`
-        WHERE docstatus = 1 AND posting_date = %s
-    """, (latest_inv_date,))[0][0] or 0.0
-
-    customers_today = frappe.db.sql("""
-        SELECT COUNT(DISTINCT customer) FROM `tabSales Invoice`
-        WHERE docstatus = 1 AND posting_date = %s
-    """, (latest_inv_date,))[0][0] or 0
-
-    latest_day_sales = sales_today
-
-    # 5. Sales trend
-    sales_trend_raw = frappe.db.sql("""
-        SELECT 
-            posting_date as date,
-            COALESCE(SUM(grand_total), 0) as total,
-            COUNT(name) as count
-        FROM `tabSales Invoice`
-        WHERE docstatus = 1 AND posting_date >= DATE_SUB(%s, INTERVAL 30 DAY)
-        GROUP BY posting_date
-        ORDER BY posting_date ASC
-    """, (latest_inv_date,), as_dict=True)
-
-    sales_trend = []
-    for r in sales_trend_raw:
-        dt_str = frappe.utils.formatdate(r.date, "dd MMM") if r.date else ""
-        sales_trend.append({
-            "date": dt_str,
-            "rawDate": str(r.date),
-            "total": flt(r.total),
-            "count": r.count,
-        })
-
-    # 6. Purchase trend
-    purchase_trend_raw = frappe.db.sql("""
-        SELECT 
-            posting_date as date,
-            COALESCE(SUM(grand_total), 0) as total,
-            COUNT(name) as count
-        FROM `tabPurchase Invoice`
-        WHERE docstatus = 1 AND posting_date >= DATE_SUB(%s, INTERVAL 30 DAY)
-        GROUP BY posting_date
-        ORDER BY posting_date ASC
-    """, (latest_inv_date,), as_dict=True)
-
-    purchase_trend = []
-    for r in purchase_trend_raw:
-        dt_str = frappe.utils.formatdate(r.date, "dd MMM") if r.date else ""
-        purchase_trend.append({
-            "date": dt_str,
-            "rawDate": str(r.date),
-            "total": flt(r.total),
-            "count": r.count,
-        })
-
-    # 7. Category distribution from actual sales items
-    cat_sales_raw = frappe.db.sql("""
-        SELECT 
-            COALESCE(i.item_group, 'General Merchandise') as item_group,
-            COALESCE(SUM(sii.amount), 0) as total_amount,
-            COALESCE(SUM(sii.qty), 0) as total_qty
-        FROM `tabSales Invoice Item` sii
-        JOIN `tabSales Invoice` si ON si.name = sii.parent
-        LEFT JOIN `tabItem` i ON i.name = sii.item_code
-        WHERE si.docstatus = 1
-        GROUP BY COALESCE(i.item_group, 'General Merchandise')
-        ORDER BY total_amount DESC
-        LIMIT 6
-    """, as_dict=True)
-
-    category_sales = []
-    colors = ["#2563eb", "#16a34a", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"]
-    for idx, c in enumerate(cat_sales_raw):
-        category_sales.append({
-            "name": c.item_group,
-            "amount": flt(c.total_amount),
-            "qty": flt(c.total_qty),
-            "share": min(100, round((flt(c.total_amount) / (total_sales or 1)) * 100)),
-            "color": colors[idx % len(colors)],
-        })
-
-    # 8. Store Performance
-    wh_sales_map = {}
-    wh_sales_raw = frappe.db.sql("""
-        SELECT 
-            COALESCE(sii.warehouse, 'POM Warehouse - CTS') as warehouse,
-            COALESCE(SUM(sii.amount), 0) as amount,
-            COALESCE(SUM(sii.qty), 0) as qty,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s THEN sii.amount ELSE 0 END), 0) as amount_ytd,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s AND MONTH(si.posting_date) = %s THEN sii.amount ELSE 0 END), 0) as amount_mtd,
-            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.amount ELSE 0 END), 0) as amount_today,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s THEN sii.qty ELSE 0 END), 0) as qty_ytd,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s AND MONTH(si.posting_date) = %s THEN sii.qty ELSE 0 END), 0) as qty_mtd,
-            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.qty ELSE 0 END), 0) as qty_today
-        FROM `tabSales Invoice Item` sii
-        JOIN `tabSales Invoice` si ON si.name = sii.parent
-        WHERE si.docstatus = 1
-        GROUP BY COALESCE(sii.warehouse, 'POM Warehouse - CTS')
-    """, (latest_yr, latest_yr, latest_mo, latest_inv_date, latest_yr, latest_yr, latest_mo, latest_inv_date), as_dict=True)
-
-    for ws in wh_sales_raw:
-        wh_sales_map[ws.warehouse] = ws
-
-    wh_stock_raw = frappe.db.sql("""
-        SELECT 
-            warehouse,
-            COALESCE(SUM(actual_qty), 0) as stock_qty,
-            COALESCE(SUM(stock_value), 0) as stock_val,
-            COUNT(item_code) as bin_count
-        FROM `tabBin`
-        WHERE actual_qty > 0
-        GROUP BY warehouse
-    """, as_dict=True)
-    wh_stock_map = {w.warehouse: w for w in wh_stock_raw}
-
-    store_performance = []
-    for w in warehouses_list:
-        wh_name = w.name
-        label = w.warehouse_name or wh_name
-        s_data = wh_sales_map.get(wh_name, {})
-        stk_data = wh_stock_map.get(wh_name, {})
-
-        amt = flt(s_data.get("amount", 0))
-        amt_today = flt(s_data.get("amount_today", 0))
-        amt_mtd = flt(s_data.get("amount_mtd", 0))
-        amt_ytd = flt(s_data.get("amount_ytd", 0))
-
-        u_sold = flt(s_data.get("qty", 0))
-        u_today = flt(s_data.get("qty_today", 0))
-        u_mtd = flt(s_data.get("qty_mtd", 0))
-        u_ytd = flt(s_data.get("qty_ytd", 0))
-
-        stk_qty = flt(stk_data.get("stock_qty", 0))
-        stk_val = flt(stk_data.get("stock_val", 0))
-        bins_cnt = stk_data.get("bin_count", 0)
-
-        daily_run_rate = (u_mtd / max(1, latest_dt.day)) if u_mtd > 0 else (u_sold / 30.0 if u_sold > 0 else 1.0)
-        days_cover = round(stk_qty / max(0.1, daily_run_rate)) if stk_qty > 0 else 0
-
-        store_performance.append({
-            "store": label,
-            "code": wh_name,
-            "region": "National Capital District" if "POM" in label or "Waigani" in label else "Morobe Province",
-            "revenue": amt,
-            "revenueToday": amt_today,
-            "revenueMTD": amt_mtd,
-            "revenueYTD": amt_ytd,
-            "unitsSold": u_sold,
-            "unitsSoldToday": u_today,
-            "unitsSoldMTD": u_mtd,
-            "unitsSoldYTD": u_ytd,
-            "stockOnHand": stk_qty,
-            "stockValue": stk_val,
-            "daysCover": min(180, days_cover),
-            "share": min(100, round((amt / (total_sales or 1)) * 100)),
-            "binCount": bins_cnt,
-        })
-
-    store_performance.sort(key=lambda x: x["revenue"], reverse=True)
-
-    # 9. Top customers
-    top_customers_raw = frappe.db.sql("""
-        SELECT 
-            customer_name,
-            customer,
-            COALESCE(SUM(grand_total), 0) as total_spent,
-            COUNT(name) as invoice_count
-        FROM `tabSales Invoice`
-        WHERE docstatus = 1
-        GROUP BY customer_name, customer
-        ORDER BY total_spent DESC
-        LIMIT 5
-    """, as_dict=True)
-
-    top_customers = []
-    for c in top_customers_raw:
-        top_customers.append({
-            "name": c.customer_name or c.customer,
-            "id": c.customer,
-            "spent": flt(c.total_spent),
-            "invoices": c.invoice_count,
-        })
-
-    # 10. Item Distribution (for Donut)
-    item_distribution_raw = frappe.db.sql("""
-        SELECT 
-            COALESCE(i.item_group, 'General') as group_name,
-            COALESCE(SUM(b.actual_qty), 0) as total_qty
-        FROM `tabBin` b
-        LEFT JOIN `tabItem` i ON i.name = b.item_code
-        WHERE b.actual_qty > 0
-        GROUP BY COALESCE(i.item_group, 'General')
-        ORDER BY total_qty DESC
-        LIMIT 6
-    """, as_dict=True)
-
-    total_dist_qty = sum(flt(d.total_qty) for d in item_distribution_raw) or 1
-    item_distribution = []
-    for d in item_distribution_raw:
-        item_distribution.append({
-            "name": d.group_name,
-            "qty": flt(d.total_qty),
-            "value": min(100, round((flt(d.total_qty) / total_dist_qty) * 100)),
-        })
-
-    # 11. Warehouse Sales Leaderboard
-    warehouse_sales_leaderboard = []
-    for idx, sp in enumerate(store_performance):
-        warehouse_sales_leaderboard.append({
-            "id": sp["code"],
-            "rank": idx + 1,
-            "name": sp["store"],
-            "location": sp["region"],
-            "revenue": sp["revenue"],
-            "revenueToday": sp["revenueToday"],
-            "revenueMTD": sp["revenueMTD"],
-            "revenueYTD": sp["revenueYTD"],
-            "unitsSold": sp["unitsSold"],
-            "unitsSoldToday": sp["unitsSoldToday"],
-            "unitsSoldMTD": sp["unitsSoldMTD"],
-            "unitsSoldYTD": sp["unitsSoldYTD"],
-            "share": sp["share"],
-            "stockValue": sp["stockValue"],
-            "stockOnHand": sp["stockOnHand"],
-            "daysCover": sp["daysCover"],
-            "activeSkus": sp["binCount"],
-            "trend": "+8.4%" if idx == 0 else ("+5.2%" if idx == 1 else "+2.1%"),
-        })
-
-    # 12. Item Sales Leaderboard (Query all selling items with pre-indexed stock & top warehouse)
-    bin_stock_raw = frappe.db.sql("""
-        SELECT item_code, warehouse, actual_qty
-        FROM `tabBin`
-        WHERE actual_qty > 0
-        ORDER BY actual_qty DESC
-    """, as_dict=True)
-    bin_stock_map = {}
-    bin_top_wh_map = {}
-    for b in bin_stock_raw:
-        code = b.item_code
-        qty = flt(b.actual_qty)
-        bin_stock_map[code] = bin_stock_map.get(code, 0.0) + qty
-        if code not in bin_top_wh_map:
-            bin_top_wh_map[code] = b.warehouse
-
-    item_sales_leaderboard_raw = frappe.db.sql("""
-        SELECT 
-            sii.item_code as code,
-            COALESCE(i.item_name, sii.item_name, sii.item_code) as name,
-            COALESCE(i.item_group, 'General') as item_group,
-            COALESCE(SUM(sii.amount), 0) as revenue,
-            COALESCE(SUM(sii.qty), 0) as unitsSold,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s THEN sii.amount ELSE 0 END), 0) as revenue_ytd,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s AND MONTH(si.posting_date) = %s THEN sii.amount ELSE 0 END), 0) as revenue_mtd,
-            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.amount ELSE 0 END), 0) as revenue_today,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s THEN sii.qty ELSE 0 END), 0) as units_ytd,
-            COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s AND MONTH(si.posting_date) = %s THEN sii.qty ELSE 0 END), 0) as units_mtd,
-            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.qty ELSE 0 END), 0) as units_today
-        FROM `tabSales Invoice Item` sii
-        JOIN `tabSales Invoice` si ON si.name = sii.parent
-        LEFT JOIN `tabItem` i ON i.name = sii.item_code
-        WHERE si.docstatus = 1 AND sii.item_code IS NOT NULL AND sii.item_code != '' AND sii.item_code != 'Opening Item'
-        GROUP BY sii.item_code, COALESCE(i.item_name, sii.item_name, sii.item_code), i.item_group
-        ORDER BY revenue DESC
-    """, (latest_yr, latest_yr, latest_mo, latest_inv_date, latest_yr, latest_yr, latest_mo, latest_inv_date), as_dict=True)
-    item_sales_leaderboard = []
-    for it in item_sales_leaderboard_raw:
-        rev = flt(it.revenue)
-        units = flt(it.unitsSold)
-        stock_on_hand = bin_stock_map.get(it.code, 0.0)
-        top_wh = bin_top_wh_map.get(it.code, 'POM Warehouse - CTS')
-        item_sales_leaderboard.append({
-            "code": it.code,
-            "name": it.name or it.code,
-            "group": it.item_group,
-            "revenue": rev,
-            "revenueToday": flt(it.revenue_today),
-            "revenueMTD": flt(it.revenue_mtd),
-            "revenueYTD": flt(it.revenue_ytd),
-            "unitsSold": units,
-            "unitsSoldToday": flt(it.units_today),
-            "unitsSoldMTD": flt(it.units_mtd),
-            "unitsSoldYTD": flt(it.units_ytd),
-            "avgPrice": round(rev / units) if units > 0 else rev,
-            "onHandStock": stock_on_hand,
-            "salesShare": min(100, round((rev / (total_sales or 1)) * 100)),
-            "topWarehouse": top_wh.split(' - ')[0] if ' - ' in top_wh else top_wh,
-            "velocity": "High Demand 🔥" if units > 20 else ("Fast Mover ⚡" if units > 6 else "Steady 📈"),
-        })
-
-    # 13. Item-Wise Sales Register Warehouse-Wise
-    item_sales_register_raw = frappe.db.sql("""
-        SELECT 
-            COALESCE(sii.warehouse, 'POM Warehouse - CTS') as warehouse,
-            sii.item_code,
-            COALESCE(i.item_name, sii.item_name, sii.item_code) as item_name,
-            COALESCE(i.item_group, 'General') as item_group,
-            COALESCE(SUM(sii.qty), 0) as units_sold,
-            COALESCE(SUM(sii.amount), 0) as total_amount,
-            COALESCE(AVG(sii.rate), 0) as avg_rate
-        FROM `tabSales Invoice Item` sii
-        JOIN `tabSales Invoice` si ON si.name = sii.parent
-        LEFT JOIN `tabItem` i ON i.name = sii.item_code
-        WHERE si.docstatus = 1 AND sii.item_code IS NOT NULL AND sii.item_code != ''
-        GROUP BY COALESCE(sii.warehouse, 'POM Warehouse - CTS'), sii.item_code, COALESCE(i.item_name, sii.item_name, sii.item_code), i.item_group
-        ORDER BY total_amount DESC
-        LIMIT 100
-    """, as_dict=True)
-
-    item_sales_register = []
-    for r in item_sales_register_raw:
-        item_sales_register.append({
-            "warehouse": r.warehouse.split(" - ")[0] if " - " in r.warehouse else r.warehouse,
-            "rawWarehouse": r.warehouse,
-            "itemCode": r.item_code,
-            "itemName": r.item_name or r.item_code,
-            "itemGroup": r.item_group,
-            "unitsSold": flt(r.units_sold),
-            "totalAmount": flt(r.total_amount),
-            "avgRate": flt(r.avg_rate),
-        })
-
-    # 14. Detailed Warehouses Breakdown for StoreDetails
-    warehouses_details = frappe.db.sql("""
-        SELECT 
-            w.name, 
-            w.warehouse_name, 
-            w.company, 
-            w.disabled,
-            COALESCE(COUNT(b.item_code), 0) as bin_count,
-            COALESCE(SUM(b.actual_qty), 0) as total_stock,
-            COALESCE(SUM(b.stock_value), 0) as total_value
-        FROM `tabWarehouse` w
-        LEFT JOIN `tabBin` b ON b.warehouse = w.name AND b.actual_qty > 0
-        WHERE w.is_group = 0 AND w.disabled = 0
-        GROUP BY w.name, w.warehouse_name, w.company, w.disabled
-        ORDER BY total_value DESC
-    """, as_dict=True)
-
-    warehouses = []
-    for idx, w in enumerate(warehouses_details):
-        s_data = wh_sales_map.get(w.name, {})
-        tot_stock = flt(w.total_stock)
-        tot_val = flt(w.total_value)
-        tot_sales_amt = flt(s_data.get("amount", 0))
-        tot_sales_units = flt(s_data.get("qty", 0))
-
-        turnover = round((tot_sales_amt / tot_val), 1) if tot_val > 0 else 1.2
-        coverage_ratio = round(tot_stock / max(1.0, tot_sales_units), 1) if tot_sales_units > 0 else 4.5
-        stock_health = min(98, max(55, int(85 - abs(coverage_ratio - 3.5) * 5)))
-
-        top_movement = "High Turnover 🔥" if turnover >= 1.5 else ("Stable Movement 📦" if turnover >= 0.8 else "Overstocked ⚠️")
-
-        chart_items = [
-            {"label": "Sales Units", "value": int(tot_sales_units), "color": "#16a34a"},
-            {"label": "Stock Qty", "value": int(tot_stock), "color": "#2563eb"},
-            {"label": "Active Bins", "value": int(w.bin_count), "color": "#f59e0b"},
-        ]
-
-        warehouses.append({
-            "name": w.name,
-            "warehouse_name": w.warehouse_name or w.name,
-            "company": w.company or "Courts",
-            "stockValue": fmt(tot_val),
-            "stockValueRaw": tot_val,
-            "runRate": f"{turnover}x",
             "status": "amber" if idx % 3 == 0 else ("green" if idx % 3 == 1 else "blue"),
             "chartItems": chart_items,
             "topMovement": top_movement,

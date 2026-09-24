@@ -7,6 +7,7 @@ import {
   Coins,
   FileText,
   Home,
+  Lock,
   LogIn,
   LogOut,
   Menu,
@@ -37,9 +38,7 @@ export function Header({
   isLoginOpen: controlledLoginOpen,
   onToggleLogin,
 }) {
-  const userRoles = data?.userRoles || data?.user?.roles || [];
-  const permissions = data?.permissions;
-  const effectiveNav = nav.filter((item) => canAccessModule(userRoles, item.page, permissions));
+  const permissions = data?.doctypePermissions || data?.permissions;
 
   const [internalLoginOpen, setInternalLoginOpen] = useState(false);
   const isLoginOpen = controlledLoginOpen !== undefined ? controlledLoginOpen : internalLoginOpen;
@@ -73,16 +72,19 @@ export function Header({
         </button>
 
         <nav className="topnav__links" aria-label="Primary navigation">
-          {effectiveNav.map((item) => {
+          {nav.map((item) => {
             const Icon = item.icon;
+            const isPermitted = canAccessModule(permissions, item.page);
             return (
               <button
-                className={`topnav__item ${item.page === activePage ? 'is-active' : ''}`}
+                className={`topnav__item ${item.page === activePage ? 'is-active' : ''} ${!isPermitted ? 'is-restricted-tab' : ''}`}
                 key={item.label}
                 onClick={() => onNavigate(item.page || 'dashboard')}
+                title={isPermitted ? item.label : `${item.label} (ERPNext permission required)`}
               >
                 <Icon size={22} />
                 <span>{item.label}</span>
+                {!isPermitted && <Lock size={12} className="nav-lock-icon" style={{ marginLeft: 4, opacity: 0.7 }} />}
               </button>
             );
           })}

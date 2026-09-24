@@ -111,19 +111,10 @@ export default function App() {
     }
   };
 
-  const userRoles = dashboardData?.userRoles || dashboardData?.user?.roles || [];
-  const permissions = dashboardData?.permissions;
-
-  // Guard active page if user roles change or do not permit the current module
-  useEffect(() => {
-    if (dashboardData && !canAccessModule(userRoles, activePage, permissions)) {
-      setActivePage('dashboard');
-    }
-  }, [dashboardData, userRoles, activePage, permissions]);
+  const permissions = dashboardData?.doctypePermissions || dashboardData?.permissions;
 
   const handleNavigate = (page, options = {}) => {
-    const targetPage = canAccessModule(userRoles, page, permissions) ? page : 'dashboard';
-    setActivePage(targetPage);
+    setActivePage(page || 'dashboard');
     setActiveReportId(options.reportId || null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

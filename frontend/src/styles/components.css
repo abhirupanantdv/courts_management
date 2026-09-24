@@ -7092,3 +7092,207 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   DYNAMIC ERPNEXT PERMISSION GATE & BLURRED RESTRICTED OVERLAYS
+   ========================================================================== */
+.permission-gate-wrapper {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.permission-gate-wrapper.is-blurred {
+  position: relative;
+}
+
+.permission-gate-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(248, 250, 252, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 20;
+  border-radius: inherit;
+  animation: fadeIn 0.25s ease;
+}
+
+.permission-gate-card {
+  max-width: 440px;
+  padding: 28px 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.permission-gate-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+}
+
+.permission-gate-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.permission-gate-desc {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.permission-doctype-code {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.permission-gate-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  margin-top: 4px;
+}
+
+/* Nav Item Locked Badge */
+.topnav__item .nav-lock-icon {
+  margin-left: 4px;
+  color: #94a3b8;
+  opacity: 0.85;
+}
+
+/* Micro Blur for Small Metric Cards */
+.management-card.is-restricted {
+  position: relative;
+  overflow: hidden;
+}
+
+.management-card.is-restricted .management-card__inner {
+  filter: blur(5px) opacity(0.28);
+  pointer-events: none;
+  user-select: none;
+}
+
+.management-card-restricted-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  z-index: 5;
+}
+
+.overview-card.is-restricted {
+  position: relative;
+  overflow: hidden;
+}
+
+.overview-card.is-restricted .overview-card__inner {
+  filter: blur(6px) opacity(0.3);
+  pointer-events: none;
+  user-select: none;
+}
+
+.overview-card-restricted-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 700;
+  z-index: 5;
+}
+
+/* Report Card Locked State */
+.report-catalog-card.is-restricted {
+  position: relative;
+  cursor: not-allowed;
+}
+
+.report-catalog-card.is-restricted .report-card-content-wrap {
+  filter: blur(5px) opacity(0.35);
+  pointer-events: none;
+  user-select: none;
+}
+
+.report-card-restricted-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 700;
+  z-index: 5;
+  border-radius: inherit;
+  padding: 16px;
+  text-align: center;
+}
+
