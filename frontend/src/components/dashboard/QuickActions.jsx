@@ -1,4 +1,5 @@
-import { BarChart3, Boxes, ChartPie, FilePlus2, Store, TrendingUp, ArrowRight } from 'lucide-react';
+import { BarChart3, Boxes, ChartPie, FilePlus2, Store, TrendingUp } from 'lucide-react';
+import { canAccessModule, canAccessReport } from '../../utils/rolePermissions.js';
 
 const actions = [
   { label: 'Sales Register', desc: 'Invoices & revenue', icon: TrendingUp, tone: 'green', page: 'reports', reportId: 'sales-register' },
@@ -9,7 +10,17 @@ const actions = [
   { label: 'Stock Movement', desc: 'Run-rate & velocity', icon: BarChart3, tone: 'teal', page: 'salesInventory', reportId: null },
 ];
 
-export function QuickActions({ onNavigate }) {
+export function QuickActions({ data = {}, onNavigate }) {
+  const userRoles = data?.userRoles || data?.user?.roles || [];
+  const permissions = data?.permissions;
+
+  const permittedActions = actions.filter((act) => {
+    if (act.reportId) {
+      return canAccessReport(userRoles, act.reportId, permissions);
+    }
+    return canAccessModule(userRoles, act.page, permissions);
+  });
+
   const handleClick = (action) => {
     if (onNavigate) {
       onNavigate(action.page, { reportId: action.reportId });
@@ -25,7 +36,7 @@ export function QuickActions({ onNavigate }) {
         </div>
       </div>
       <div className="quick-actions">
-        {actions.map((action) => {
+        {permittedActions.map((action) => {
           const Icon = action.icon;
           return (
             <button

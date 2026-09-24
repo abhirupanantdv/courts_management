@@ -38,8 +38,8 @@ export function Header({
   onToggleLogin,
 }) {
   const userRoles = data?.userRoles || data?.user?.roles || [];
-  const permittedNav = nav.filter((item) => canAccessModule(userRoles, item.page));
-  const effectiveNav = permittedNav.length > 0 ? permittedNav : nav;
+  const permissions = data?.permissions;
+  const effectiveNav = nav.filter((item) => canAccessModule(userRoles, item.page, permissions));
 
   const [internalLoginOpen, setInternalLoginOpen] = useState(false);
   const isLoginOpen = controlledLoginOpen !== undefined ? controlledLoginOpen : internalLoginOpen;

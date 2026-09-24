@@ -77,63 +77,73 @@ export function CommandCentre({
   };
 
   const userRoles = data?.userRoles || data?.user?.roles || [];
+  const permissions = data?.permissions;
 
-  if (activePage === 'salesInventory' && canAccessModule(userRoles, 'salesInventory')) {
+  if (activePage === 'salesInventory' && canAccessModule(userRoles, 'salesInventory', permissions)) {
     return <SalesInventoryPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'sales' && canAccessModule(userRoles, 'sales')) {
+  if (activePage === 'sales' && canAccessModule(userRoles, 'sales', permissions)) {
     return <SalesPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'inventory' && canAccessModule(userRoles, 'inventory')) {
+  if (activePage === 'inventory' && canAccessModule(userRoles, 'inventory', permissions)) {
     return <InventoryPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'purchases' && canAccessModule(userRoles, 'purchases')) {
+  if (activePage === 'purchases' && canAccessModule(userRoles, 'purchases', permissions)) {
     return <PurchasesPage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'finance' && canAccessModule(userRoles, 'finance')) {
+  if (activePage === 'finance' && canAccessModule(userRoles, 'finance', permissions)) {
     return <FinancePage data={data} onNavigate={onNavigate} />;
   }
-  if (activePage === 'reports' && canAccessModule(userRoles, 'reports')) {
+  if (activePage === 'reports' && canAccessModule(userRoles, 'reports', permissions)) {
     return <ReportsPage data={data} onNavigate={onNavigate} initialReportId={activeReportId} />;
   }
+
+  const hasSalesAccess = canAccessModule(userRoles, 'sales', permissions);
+  const hasInventoryAccess = canAccessModule(userRoles, 'inventory', permissions);
 
   return (
     <main className="dashboard-main">
       <Hero data={data} onNavigate={onNavigate} />
       <OverviewCards data={data} isRefreshing={isRefreshing} onRefresh={onRefresh} onNavigate={onNavigate} />
-      <ManagementOverview cards={data.managementOverview} />
+      <ManagementOverview cards={data.managementOverview} data={data} />
 
       {/* Modern Multi-Option Sales Intelligence Leaderboard (Warehouses & Items) */}
-      <SalesPerformanceLeaderboard data={data} onNavigate={onNavigate} />
+      {hasSalesAccess && <SalesPerformanceLeaderboard data={data} onNavigate={onNavigate} />}
 
       <section className="dashboard-grid dashboard-grid--top">
-        <SalesChart
-          data={data.salesTrend}
-          todayTotal={data.heroMetrics.salesToday}
-          onNavigate={onNavigate}
-        />
-        <CategoryPerformanceCard
-          categories={data.categorySales || []}
-          onNavigate={onNavigate}
-        />
-        <QuickActions onNavigate={onNavigate} />
+        {hasSalesAccess && (
+          <SalesChart
+            data={data.salesTrend}
+            todayTotal={data.heroMetrics.salesToday}
+            onNavigate={onNavigate}
+          />
+        )}
+        {hasSalesAccess && (
+          <CategoryPerformanceCard
+            categories={data.categorySales || []}
+            onNavigate={onNavigate}
+          />
+        )}
+        <QuickActions data={data} onNavigate={onNavigate} />
       </section>
 
-      <section className="dashboard-grid dashboard-grid--bottom">
-        <StorePerformance 
-          stores={data.storePerformance} 
-          selectedStore={selectedStore}
-          onSelectStore={handleSelectStore}
-          onNavigate={onNavigate} 
-        />
-        <StoreDetails 
-          data={data} 
-          selectedStore={selectedStore}
-          onSelectStore={setSelectedStore}
-          onNavigate={onNavigate} 
-        />
-        <ItemSalesRegisterByWarehouse data={data} onNavigate={onNavigate} />
-      </section>
+      {(hasSalesAccess || hasInventoryAccess) && (
+        <section className="dashboard-grid dashboard-grid--bottom">
+          <StorePerformance 
+            stores={data.storePerformance} 
+            selectedStore={selectedStore}
+            onSelectStore={handleSelectStore}
+            onNavigate={onNavigate} 
+          />
+          <StoreDetails 
+            data={data} 
+            selectedStore={selectedStore}
+            onSelectStore={setSelectedStore}
+            onNavigate={onNavigate} 
+          />
+          {hasSalesAccess && <ItemSalesRegisterByWarehouse data={data} onNavigate={onNavigate} />}
+        </section>
+      )}
       <AppFooter />
     </main>
   );

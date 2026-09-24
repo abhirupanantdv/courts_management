@@ -146,12 +146,12 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
     },
   ];
 
-  // Role-Based Access Control: filter catalog to reports the user's ERPNext roles authorize
-  const permittedReports = useMemo(() => {
-    return reportDefinitions.filter((r) => canAccessReport(userRoles, r.id));
-  }, [reportDefinitions, userRoles]);
+  const permissions = data?.permissions;
 
-  const effectiveReports = permittedReports.length > 0 ? permittedReports : reportDefinitions;
+  // Role-Based Access Control: filter catalog strictly to reports the user's ERPNext roles authorize
+  const effectiveReports = useMemo(() => {
+    return reportDefinitions.filter((r) => canAccessReport(userRoles, r.id, permissions));
+  }, [reportDefinitions, userRoles, permissions]);
 
   // Gracefully synchronize active report if unauthorized report was previously selected
   useEffect(() => {
@@ -160,10 +160,13 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
       if (openedReportId) {
         setOpenedReportId(effectiveReports[0].id);
       }
+    } else if (effectiveReports.length === 0) {
+      setActiveReportId(null);
+      setOpenedReportId(null);
     }
   }, [effectiveReports, activeReportId, openedReportId]);
 
-  const activeReport = effectiveReports.find((r) => r.id === activeReportId) || effectiveReports[0];
+  const activeReport = effectiveReports.find((r) => r.id === activeReportId) || effectiveReports[0] || null;
 
   // Trigger Execution
   const handleExecuteReport = () => {
@@ -373,6 +376,34 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
     document.body.removeChild(link);
   };
 
+  // Empty state if user has no authorized reports
+  if (effectiveReports.length === 0) {
+    return (
+      <main className="module-page report-cards-hub">
+        <div className="module-page__header">
+          <div>
+            <div className="module-badge is-blue">
+              <FileSpreadsheet size={15} />
+              <span>Courts Financial & Operational Intelligence</span>
+            </div>
+            <h1>Executive Reports & Ledgers Directory</h1>
+            <p>Access restricted based on your assigned ERPNext system roles.</p>
+          </div>
+        </div>
+        <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '30px 0' }}>
+          <FileText size={48} style={{ color: '#94a3b8', margin: '0 auto 16px', display: 'block' }} />
+          <h3 style={{ fontSize: '1.2rem', color: '#0f172a', marginBottom: '8px' }}>No Reports Authorized</h3>
+          <p style={{ color: '#64748b', maxWidth: '520px', margin: '0 auto 20px', fontSize: '0.9rem', lineHeight: '1.5' }}>
+            Your ERPNext account does not have read permissions for Sales, Purchases, Inventory, or Financial ledgers. If you need access to specific reports, please contact your system administrator.
+          </p>
+          <button className="action-btn action-btn--primary" onClick={() => onNavigate('dashboard')}>
+            Return to Dashboard
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   // CARD FORM: Render Cards Hub if no report card is currently opened
   if (!openedReportId) {
     return (
@@ -397,7 +428,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
 
         {/* Directory Highlights (Role-Gated) */}
         <div className="module-kpis-grid">
-          {canAccessReport(userRoles, 'sales-register') && (
+          {canAccessReport(userRoles, 'sales-register', permissions) && (
             <div className="module-kpi-card">
               <span className="kpi-icon is-green"><ShoppingCart size={22} /></span>
               <div>
@@ -407,7 +438,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
               </div>
             </div>
           )}
-          {canAccessReport(userRoles, 'stock-balance') && (
+          {canAccessReport(userRoles, 'stock-balance', permissions) && (
             <div className="module-kpi-card">
               <span className="kpi-icon is-teal"><Boxes size={22} /></span>
               <div>
@@ -417,7 +448,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
               </div>
             </div>
           )}
-          {canAccessReport(userRoles, 'purchase-register') && (
+          {canAccessReport(userRoles, 'purchase-register', permissions) && (
             <div className="module-kpi-card">
               <span className="kpi-icon is-amber"><Truck size={22} /></span>
               <div>
@@ -427,7 +458,7 @@ export function ReportsPage({ data, onNavigate, initialReportId = null }) {
               </div>
             </div>
           )}
-          {canAccessReport(userRoles, 'store-matrix') && (
+          {canAccessReport(userRoles, 'store-matrix', permissions) && (
             <div className="module-kpi-card">
               <span className="kpi-icon is-purple"><Store size={22} /></span>
               <div>

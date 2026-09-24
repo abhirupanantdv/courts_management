@@ -1,18 +1,11 @@
 /**
  * Role-Based Access Control (RBAC) definitions and helpers for Courts ERPNext Dashboard.
- * Maps authenticated user roles to permitted dashboard modules and operational reports.
+ * Maps authenticated user roles and authentic ERPNext DocType permissions to permitted dashboard modules and operational reports.
  */
 
 export const SUPER_ADMIN_ROLES = [
   'System Manager',
   'Administrator',
-  'Workspace Manager',
-  'Dashboard Manager',
-  'Report Manager',
-  'President',
-  'GM',
-  'CFO',
-  'adv developer',
 ];
 
 export const ROLE_GROUPS = {
@@ -60,77 +53,96 @@ export function hasAnyRole(userRoles = [], requiredRoles = []) {
 
 /**
  * Checks if the user is authorized to view a primary dashboard module.
+ * Prioritizes authentic DocType permissions returned directly by ERPNext backend.
  */
-export function canAccessModule(userRoles = [], moduleName) {
-  if (!Array.isArray(userRoles) || userRoles.length === 0) {
-    // If roles are not yet loaded, default to open for dashboard to prevent locking out
-    return moduleName === 'dashboard';
-  }
-
-  if (isSuperAdmin(userRoles)) return true;
+export function canAccessModule(userRoles = [], moduleName, permissions = null) {
+  if (isSuperAdmin(userRoles) || permissions?.isAdmin) return true;
 
   switch (moduleName) {
     case 'dashboard':
-      // The executive overview is accessible to all logged-in staff
       return true;
 
     case 'sales':
+      if (permissions && typeof permissions.sales === 'boolean') {
+        return permissions.sales;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.sales);
 
     case 'salesInventory':
-      // Requires either sales or stock roles
+      if (permissions && typeof permissions.sales === 'boolean' && typeof permissions.inventory === 'boolean') {
+        return permissions.sales || permissions.inventory;
+      }
       return hasAnyRole(userRoles, [...ROLE_GROUPS.sales, ...ROLE_GROUPS.inventory]);
 
     case 'inventory':
+      if (permissions && typeof permissions.inventory === 'boolean') {
+        return permissions.inventory;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.inventory);
 
     case 'purchases':
+      if (permissions && typeof permissions.purchases === 'boolean') {
+        return permissions.purchases;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.purchases);
 
     case 'finance':
+      if (permissions && typeof permissions.finance === 'boolean') {
+        return permissions.finance;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.finance);
 
     case 'reports':
-      // Accessible if user has access to at least one report category
       return (
-        hasAnyRole(userRoles, ROLE_GROUPS.sales) ||
-        hasAnyRole(userRoles, ROLE_GROUPS.inventory) ||
-        hasAnyRole(userRoles, ROLE_GROUPS.purchases) ||
-        hasAnyRole(userRoles, ROLE_GROUPS.finance)
+        canAccessModule(userRoles, 'sales', permissions) ||
+        canAccessModule(userRoles, 'inventory', permissions) ||
+        canAccessModule(userRoles, 'purchases', permissions) ||
+        canAccessModule(userRoles, 'finance', permissions)
       );
 
     default:
-      return true;
+      return false;
   }
 }
 
 /**
  * Checks if the user is authorized to view a specific report in the Reports Suite.
+ * Prioritizes authentic DocType permissions returned directly by ERPNext backend.
  */
-export function canAccessReport(userRoles = [], reportId) {
-  if (!Array.isArray(userRoles) || userRoles.length === 0) {
-    // Safe default before roles load: sales register
-    return reportId === 'sales-register';
-  }
-
-  if (isSuperAdmin(userRoles)) return true;
+export function canAccessReport(userRoles = [], reportId, permissions = null) {
+  if (isSuperAdmin(userRoles) || permissions?.isAdmin) return true;
 
   switch (reportId) {
     case 'sales-register':
     case 'salesman-pos-register':
+      if (permissions && typeof permissions.sales === 'boolean') {
+        return permissions.sales;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.sales);
 
     case 'stock-balance':
+      if (permissions && typeof permissions.inventory === 'boolean') {
+        return permissions.inventory;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.inventory);
 
     case 'purchase-register':
+      if (permissions && typeof permissions.purchases === 'boolean') {
+        return permissions.purchases;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.purchases);
 
     case 'profit-and-loss':
     case 'general-ledger':
+      if (permissions && typeof permissions.finance === 'boolean') {
+        return permissions.finance;
+      }
       return hasAnyRole(userRoles, ROLE_GROUPS.finance);
 
     case 'store-matrix':
+      if (permissions && typeof permissions.sales === 'boolean' && typeof permissions.inventory === 'boolean') {
+        return permissions.sales || permissions.inventory;
+      }
       return hasAnyRole(userRoles, [...ROLE_GROUPS.inventory, ...ROLE_GROUPS.sales]);
 
     default:

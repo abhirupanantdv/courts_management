@@ -1,11 +1,12 @@
 import { Boxes, RefreshCw, ShoppingCart, Store, Users } from 'lucide-react';
 import { formatNumber } from '../../utils/formatters.js';
 import { MoneyAmount } from '../common/MoneyAmount.jsx';
-import { erpNextRoutes, redirectToErpNext } from '../../utils/erpnextRoutes.js';
+import { canAccessModule } from '../../utils/rolePermissions.js';
 
 const cards = [
   {
     key: 'sales',
+    module: 'sales',
     icon: ShoppingCart,
     tone: 'green',
     label: 'Total Sales Today',
@@ -14,6 +15,7 @@ const cards = [
   },
   {
     key: 'stores',
+    module: 'inventory',
     icon: Store,
     tone: 'blue',
     label: 'Total Number of Stores',
@@ -22,6 +24,7 @@ const cards = [
   },
   {
     key: 'warehouses',
+    module: 'inventory',
     icon: Boxes,
     tone: 'orange',
     label: 'Total Warehouses',
@@ -30,6 +33,7 @@ const cards = [
   },
   {
     key: 'customers',
+    module: 'sales',
     icon: Users,
     tone: 'purple',
     label: 'Total Customers Today',
@@ -38,10 +42,18 @@ const cards = [
   },
 ];
 
-export function OverviewCards({ data, isRefreshing, onRefresh }) {
+export function OverviewCards({ data, isRefreshing, onRefresh, onNavigate }) {
+  const userRoles = data?.userRoles || data?.user?.roles || [];
+  const permissions = data?.permissions;
+
+  const permittedCards = cards.filter((card) => {
+    if (!card.module) return true;
+    return canAccessModule(userRoles, card.module, permissions);
+  });
+
   return (
     <section className="overview-grid" aria-label="Daily overview">
-      {cards.map((card, index) => {
+      {permittedCards.map((card, index) => {
         const Icon = card.icon;
         return (
           <article className="overview-card" key={card.key}>

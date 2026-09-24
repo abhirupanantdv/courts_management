@@ -1,5 +1,6 @@
 import { ArrowUpRight, CircleDot, Columns3, Hexagon, Square, Triangle } from 'lucide-react';
 import { MoneyAmount } from '../common/MoneyAmount.jsx';
+import { canAccessModule } from '../../utils/rolePermissions.js';
 
 const icons = {
   blue: Square,
@@ -10,7 +11,15 @@ const icons = {
   pink: CircleDot,
 };
 
-export function ManagementOverview({ cards }) {
+export function ManagementOverview({ cards = [], data = {} }) {
+  const userRoles = data?.userRoles || data?.user?.roles || [];
+  const permissions = data?.permissions;
+
+  const permittedCards = cards.filter((card) => {
+    if (!card.module) return true;
+    return canAccessModule(userRoles, card.module, permissions);
+  });
+
   return (
     <section className="management-overview" aria-label="Management overview">
       <div className="management-overview__header">
@@ -18,7 +27,7 @@ export function ManagementOverview({ cards }) {
         <p>Command Centre is connected to React.</p>
       </div>
       <div className="management-overview__grid">
-        {cards.map((card) => {
+        {permittedCards.map((card) => {
           const Icon = icons[card.tone] ?? Square;
           return (
             <article className="management-card" key={card.label}>

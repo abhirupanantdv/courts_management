@@ -673,6 +673,21 @@ def get_dashboard_data():
     user_roles = frappe.get_roles(user) if user and user != "Guest" else []
     user_fullname = frappe.utils.get_fullname(user) if user and user != "Guest" else "User"
 
+    # Authentic ERPNext DocType permissions for current user session
+    is_admin = "Administrator" in user_roles or "System Manager" in user_roles
+    can_sales = is_admin or frappe.has_permission("Sales Invoice", "read", user=user) or frappe.has_permission("POS Invoice", "read", user=user)
+    can_purchases = is_admin or frappe.has_permission("Purchase Invoice", "read", user=user)
+    can_inventory = is_admin or frappe.has_permission("Bin", "read", user=user) or frappe.has_permission("Item", "read", user=user)
+    can_finance = is_admin or frappe.has_permission("GL Entry", "read", user=user) or frappe.has_permission("Account", "read", user=user)
+
+    permissions = {
+        "sales": bool(can_sales),
+        "purchases": bool(can_purchases),
+        "inventory": bool(can_inventory),
+        "finance": bool(can_finance),
+        "isAdmin": bool(is_admin),
+    }
+
     return {
         "user": {
             "email": user,
@@ -680,6 +695,7 @@ def get_dashboard_data():
             "roles": user_roles,
         },
         "userRoles": user_roles,
+        "permissions": permissions,
         "counts": {
             "salesInvoices": total_invoices,
             "purchaseInvoices": total_purchases_count,
@@ -703,12 +719,12 @@ def get_dashboard_data():
             "latestDaySales": latest_day_sales,
         },
         "managementOverview": [
-            {"label": "Total Stores", "value": str(len(warehouses_list)), "description": "Active stores", "tone": "blue"},
-            {"label": "Total Sales", "value": fmt(total_sales), "rawValue": total_sales, "isCurrency": True, "description": f"{total_invoices} invoices posted", "tone": "green"},
-            {"label": "Procurement Spend", "value": fmt(total_purchase), "rawValue": total_purchase, "isCurrency": True, "description": f"{total_purchases_count} purchase invoices", "tone": "purple"},
-            {"label": "Operating Margin", "value": fmt(total_sales - total_purchase), "rawValue": total_sales - total_purchase, "isCurrency": True, "description": "Surplus before overhead", "tone": "amber"},
-            {"label": "Current Inventory", "value": f"{int(inventory_qty):,}", "description": f"{total_bins_count} active bins", "tone": "teal"},
-            {"label": "Inventory Value", "value": fmt(inventory_value), "rawValue": inventory_value, "isCurrency": True, "description": "Current stock valuation", "tone": "pink"},
+            {"label": "Total Stores", "module": "inventory", "value": str(len(warehouses_list)), "description": "Active stores", "tone": "blue"},
+            {"label": "Total Sales", "module": "sales", "value": fmt(total_sales), "rawValue": total_sales, "isCurrency": True, "description": f"{total_invoices} invoices posted", "tone": "green"},
+            {"label": "Procurement Spend", "module": "purchases", "value": fmt(total_purchase), "rawValue": total_purchase, "isCurrency": True, "description": f"{total_purchases_count} purchase invoices", "tone": "purple"},
+            {"label": "Operating Margin", "module": "finance", "value": fmt(total_sales - total_purchase), "rawValue": total_sales - total_purchase, "isCurrency": True, "description": "Surplus before overhead", "tone": "amber"},
+            {"label": "Current Inventory", "module": "inventory", "value": f"{int(inventory_qty):,}", "description": f"{total_bins_count} active bins", "tone": "teal"},
+            {"label": "Inventory Value", "module": "inventory", "value": fmt(inventory_value), "rawValue": inventory_value, "isCurrency": True, "description": "Current stock valuation", "tone": "pink"},
         ],
         "kpis": {
             "totalSales": {"value": total_sales, "display": fmt(total_sales)},
@@ -756,12 +772,18 @@ def get_user_roles():
 def get_report_rows(report_id, start=0, limit=20, filters=None):
     """
     Paginated server-side query endpoint for the Courts reports.
-    Balanced database execution with offset & limit.
+    Balanced database execution with offset & limit, guarded by DocType permissions.
     """
     start = int(start or 0)
     limit = int(limit or 20)
 
-    if report_id == "sales-register":
+    user = frappe.session.user
+    roles = frappe.get_roles(user) if user and user != "Guest" else []
+    is_admin = "Administrator" in roles or "System Manager" in roles
+
+    if report_id in ("sales-register", "salesman-pos-register"):
+        if not (is_admin or frappe.has_permission("Sales Invoice", "read", user=user)):
+            frappe.throw("You do not have permission to view Sales reports.", frappe.PermissionError)
         rows = frappe.db.sql("""
             SELECT name, customer, customer_name, grand_total, net_total, total_taxes_and_charges, outstanding_amount, posting_date, company, status, due_date, currency
             FROM `tabSales Invoice`
@@ -773,6 +795,8 @@ def get_report_rows(report_id, start=0, limit=20, filters=None):
         return {"rows": rows, "total": total}
 
     elif report_id == "purchase-register":
+        if not (is_admin or frappe.has_permission("Purchase Invoice", "read", user=user)):
+            frappe.throw("You do not have permission to view Purchase reports.", frappe.PermissionError)
         rows = frappe.db.sql("""
             SELECT name, supplier, supplier_name, bill_no, grand_total, net_total, total_taxes_and_charges, outstanding_amount, posting_date, company, status, due_date, currency
             FROM `tabPurchase Invoice`
@@ -784,6 +808,8 @@ def get_report_rows(report_id, start=0, limit=20, filters=None):
         return {"rows": rows, "total": total}
 
     elif report_id == "stock-balance":
+        if not (is_admin or frappe.has_permission("Bin", "read", user=user) or frappe.has_permission("Item", "read", user=user)):
+            frappe.throw("You do not have permission to view Stock Balance reports.", frappe.PermissionError)
         rows = frappe.db.sql("""
             SELECT b.name, b.item_code, COALESCE(i.item_name, b.item_code) as item_name, COALESCE(i.item_group, 'Merchandise') as item_group, b.warehouse, b.actual_qty, b.stock_value, b.valuation_rate, b.reserved_qty, b.projected_qty
             FROM `tabBin` b
@@ -795,6 +821,8 @@ def get_report_rows(report_id, start=0, limit=20, filters=None):
         return {"rows": rows, "total": total}
 
     elif report_id == "general-ledger":
+        if not (is_admin or frappe.has_permission("GL Entry", "read", user=user)):
+            frappe.throw("You do not have permission to view Financial reports.", frappe.PermissionError)
         rows = frappe.db.sql("""
             SELECT name, posting_date, account, party_type, party, against, debit, credit, voucher_type, voucher_no
             FROM `tabGL Entry`
