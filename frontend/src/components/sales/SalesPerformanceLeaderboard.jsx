@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
+  ArrowDown,
   ArrowRight, 
   Award, 
   Boxes, 
@@ -27,11 +28,17 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(
     data?.warehouseSalesLeaderboard?.[0]?.id || ''
   );
+  const [visibleProductsCount, setVisibleProductsCount] = useState(24);
 
   const rawWarehouses = data?.warehouseSalesLeaderboard || [];
   const rawItems = (data?.itemSalesLeaderboard || []).filter(
     (i) => i.code && i.code !== 'Unknown' && i.name !== 'Unknown'
   );
+
+  // Reset pagination when search query, sort order, period, or activeTab changes
+  useEffect(() => {
+    setVisibleProductsCount(24);
+  }, [searchQuery, sortBy, period, activeTab]);
 
   // Helper for period revenue & units
   const getWhRevenue = (wh) => {
@@ -91,6 +98,11 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
     }
     return list;
   }, [rawItems, searchQuery, sortBy, period]);
+
+  // Progressive batch rendering to protect browser DOM performance
+  const visibleItems = useMemo(() => {
+    return items.slice(0, visibleProductsCount);
+  }, [items, visibleProductsCount]);
 
   // Selected Warehouse for Drilldown
   const activeDrilldownWarehouse = useMemo(() => {
@@ -357,83 +369,109 @@ export function SalesPerformanceLeaderboard({ data, onNavigate }) {
 
       {/* VIEW 2: TOP SELLING PRODUCTS (CARD-WISE GRID) */}
       {activeTab === 'items' && (
-        <div className="leaderboard-products-grid">
-          {items.map((item, index) => {
-            const isTop1 = index === 0;
-            const isTop2 = index === 1;
-            const isTop3 = index === 2;
+        <>
+          <div className="leaderboard-products-grid">
+            {visibleItems.map((item, index) => {
+              const isTop1 = index === 0;
+              const isTop2 = index === 1;
+              const isTop3 = index === 2;
 
-            return (
-              <div
-                key={item.code}
-                className={`product-card-box ${isTop1 ? 'is-first' : ''}`}
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                {/* Product Card Header */}
-                <div className="product-card-top">
-                  <div className="product-rank-tag">
-                    {isTop1 ? (
-                      <span className="rank-chip gold">🥇 #1 Best Seller</span>
-                    ) : isTop2 ? (
-                      <span className="rank-chip silver">🥈 #2 Rank</span>
-                    ) : isTop3 ? (
-                      <span className="rank-chip bronze">🥉 #3 Rank</span>
-                    ) : (
-                      <span className="rank-chip">#{index + 1} Rank</span>
-                    )}
+              return (
+                <div
+                  key={item.code}
+                  className={`product-card-box ${isTop1 ? 'is-first' : ''}`}
+                  style={{ animationDelay: `${(index % 24) * 40}ms` }}
+                >
+                  {/* Product Card Header */}
+                  <div className="product-card-top">
+                    <div className="product-rank-tag">
+                      {isTop1 ? (
+                        <span className="rank-chip gold">🥇 #1 Best Seller</span>
+                      ) : isTop2 ? (
+                        <span className="rank-chip silver">🥈 #2 Rank</span>
+                      ) : isTop3 ? (
+                        <span className="rank-chip bronze">🥉 #3 Rank</span>
+                      ) : (
+                        <span className="rank-chip">#{index + 1} Rank</span>
+                      )}
+                    </div>
+                    <span className="product-velocity-pill">{item.velocity}</span>
                   </div>
-                  <span className="product-velocity-pill">{item.velocity}</span>
-                </div>
 
-                {/* Product Title & Identifiers */}
-                <div className="product-title-section">
-                  <h4 className="product-title" title={item.name}>{item.name}</h4>
-                  <div className="product-meta-row">
-                    <code className="sku-badge">{item.code}</code>
-                    <span className="category-tag">{item.group}</span>
-                    <span className="store-pill">
-                      <Store size={12} /> {item.topWarehouse}
-                    </span>
+                  {/* Product Title & Identifiers */}
+                  <div className="product-title-section">
+                    <h4 className="product-title" title={item.name}>{item.name}</h4>
+                    <div className="product-meta-row">
+                      <code className="sku-badge">{item.code}</code>
+                      <span className="category-tag">{item.group}</span>
+                      <span className="store-pill">
+                        <Store size={12} /> {item.topWarehouse}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Product Revenue & Quantity Grid */}
-                <div className="product-metrics-grid">
-                  <div className="p-metric-item highlight">
-                    <small>Revenue ({period.toUpperCase()})</small>
-                    <strong className="p-rev-val">
-                      <MoneyAmount value={getItemRevenue(item)} />
-                    </strong>
+                  {/* Product Revenue & Quantity Grid */}
+                  <div className="product-metrics-grid">
+                    <div className="p-metric-item highlight">
+                      <small>Revenue ({period.toUpperCase()})</small>
+                      <strong className="p-rev-val">
+                        <MoneyAmount value={getItemRevenue(item)} />
+                      </strong>
+                    </div>
+                    <div className="p-metric-item">
+                      <small>Units Sold</small>
+                      <strong>{formatNumber(getItemUnits(item))} <span className="unit-label">Units</span></strong>
+                    </div>
+                    <div className="p-metric-item">
+                      <small>Stock on Hand</small>
+                      <strong className={`stock-status ${item.onHandStock > 20 ? 'healthy' : 'low'}`}>
+                        {formatNumber(item.onHandStock)} <span className="unit-label">Avail</span>
+                      </strong>
+                    </div>
                   </div>
-                  <div className="p-metric-item">
-                    <small>Units Sold</small>
-                    <strong>{formatNumber(getItemUnits(item))} <span className="unit-label">Units</span></strong>
-                  </div>
-                  <div className="p-metric-item">
-                    <small>Stock on Hand</small>
-                    <strong className={`stock-status ${item.onHandStock > 20 ? 'healthy' : 'low'}`}>
-                      {formatNumber(item.onHandStock)} <span className="unit-label">Avail</span>
-                    </strong>
-                  </div>
-                </div>
 
-                {/* Contribution Share Bar */}
-                <div className="product-share-section">
-                  <div className="share-labels">
-                    <span>Revenue Share</span>
-                    <strong>{item.salesShare}%</strong>
-                  </div>
-                  <div className="share-track">
-                    <div
-                      className="share-fill"
-                      style={{ width: `${Math.max(12, item.salesShare * 2.2)}%` }}
-                    />
+                  {/* Contribution Share Bar */}
+                  <div className="product-share-section">
+                    <div className="share-labels">
+                      <span>Revenue Share</span>
+                      <strong>{item.salesShare}%</strong>
+                    </div>
+                    <div className="share-track">
+                      <div
+                        className="share-fill"
+                        style={{ width: `${Math.max(12, item.salesShare * 2.2)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Load More & Progressive Disclosure Pagination Bar */}
+          {items.length > 0 && (
+            <div className="leaderboard-pagination-bar">
+              <span className="pagination-count-label">
+                Showing <strong>{Math.min(visibleProductsCount, items.length)}</strong> of <strong>{items.length}</strong> products
+              </span>
+              {visibleProductsCount < items.length ? (
+                <button
+                  type="button"
+                  className="leaderboard-load-more-btn"
+                  onClick={() => setVisibleProductsCount((prev) => prev + 24)}
+                >
+                  <ArrowDown size={15} />
+                  <span>Load More Products (+{Math.min(24, items.length - visibleProductsCount)} items)</span>
+                </button>
+              ) : (
+                <span className="all-loaded-pill">
+                  <CheckCircle2 size={14} />
+                  <span>All {items.length} products loaded</span>
+                </span>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* VIEW 3: STORE DRILLDOWN SHOWCASE - LEFT-SIDE WAREHOUSE SELECTOR */}

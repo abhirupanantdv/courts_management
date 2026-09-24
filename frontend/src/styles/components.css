@@ -4600,6 +4600,71 @@ td {
   transition: width 0.7s ease;
 }
 
+/* Leaderboard Products Pagination / Load More Bar */
+.leaderboard-pagination-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 20px 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.pagination-count-label {
+  font-size: 0.84rem;
+  color: #64748b;
+  letter-spacing: -0.01em;
+}
+
+.pagination-count-label strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.leaderboard-load-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s ease;
+}
+
+.leaderboard-load-more-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+}
+
+.leaderboard-load-more-btn:active {
+  transform: translateY(0);
+}
+
+.all-loaded-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 /* ==========================================================================
    VIEW 3: STORE DRILLDOWN SHOWCASE
    ========================================================================== */

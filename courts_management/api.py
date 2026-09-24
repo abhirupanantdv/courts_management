@@ -431,7 +431,22 @@ def get_dashboard_data():
     for idx, item in enumerate(warehouse_sales_leaderboard):
         item["rank"] = idx + 1
 
-    # 12. Item Sales Leaderboard (Query real item groups, on-hand stock, and top warehouse)
+    # 12. Item Sales Leaderboard (Query all selling items with pre-indexed stock & top warehouse)
+    bin_stock_raw = frappe.db.sql("""
+        SELECT item_code, warehouse, actual_qty
+        FROM `tabBin`
+        WHERE actual_qty > 0
+        ORDER BY actual_qty DESC
+    """, as_dict=True)
+    bin_stock_map = {}
+    bin_top_wh_map = {}
+    for b in bin_stock_raw:
+        code = b.item_code
+        qty = flt(b.actual_qty)
+        bin_stock_map[code] = bin_stock_map.get(code, 0.0) + qty
+        if code not in bin_top_wh_map:
+            bin_top_wh_map[code] = b.warehouse
+
     item_sales_leaderboard_raw = frappe.db.sql("""
         SELECT 
             sii.item_code as code,
@@ -444,22 +459,20 @@ def get_dashboard_data():
             COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.amount ELSE 0 END), 0) as revenue_today,
             COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s THEN sii.qty ELSE 0 END), 0) as units_ytd,
             COALESCE(SUM(CASE WHEN YEAR(si.posting_date) = %s AND MONTH(si.posting_date) = %s THEN sii.qty ELSE 0 END), 0) as units_mtd,
-            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.qty ELSE 0 END), 0) as units_today,
-            COALESCE((SELECT SUM(b.actual_qty) FROM `tabBin` b WHERE b.item_code = sii.item_code), 0) as on_hand_stock,
-            COALESCE((SELECT b2.warehouse FROM `tabBin` b2 WHERE b2.item_code = sii.item_code ORDER BY b2.actual_qty DESC LIMIT 1), 'POM Warehouse - CTS') as top_warehouse
+            COALESCE(SUM(CASE WHEN si.posting_date = %s THEN sii.qty ELSE 0 END), 0) as units_today
         FROM `tabSales Invoice Item` sii
         JOIN `tabSales Invoice` si ON si.name = sii.parent
         LEFT JOIN `tabItem` i ON i.name = sii.item_code
         WHERE si.docstatus = 1 AND sii.item_code IS NOT NULL AND sii.item_code != '' AND sii.item_code != 'Opening Item'
         GROUP BY sii.item_code, COALESCE(i.item_name, sii.item_name, sii.item_code), i.item_group
         ORDER BY revenue DESC
-        LIMIT 25
     """, (latest_yr, latest_yr, latest_mo, latest_inv_date, latest_yr, latest_yr, latest_mo, latest_inv_date), as_dict=True)
     item_sales_leaderboard = []
     for it in item_sales_leaderboard_raw:
         rev = flt(it.revenue)
         units = flt(it.unitsSold)
-        stock_on_hand = flt(it.on_hand_stock)
+        stock_on_hand = bin_stock_map.get(it.code, 0.0)
+        top_wh = bin_top_wh_map.get(it.code, 'POM Warehouse - CTS')
         item_sales_leaderboard.append({
             "code": it.code,
             "name": it.name or it.code,
@@ -475,7 +488,7 @@ def get_dashboard_data():
             "avgPrice": round(rev / units) if units > 0 else rev,
             "onHandStock": stock_on_hand,
             "salesShare": min(100, round((rev / (total_sales or 1)) * 100)),
-            "topWarehouse": it.top_warehouse.split(' - ')[0] if ' - ' in it.top_warehouse else it.top_warehouse,
+            "topWarehouse": top_wh.split(' - ')[0] if ' - ' in top_wh else top_wh,
             "velocity": "High Demand 🔥" if units > 20 else ("Fast Mover ⚡" if units > 6 else "Steady 📈"),
         })
 
